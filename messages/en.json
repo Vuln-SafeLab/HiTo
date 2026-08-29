@@ -153,10 +153,10 @@
   },
   "errors": {
     "generic": "Something went wrong. Please try again.",
-    "dbUnreachable": "Could not reach the database server. Check that MySQL is running and host/port are correct.",
-    "dbAuth": "The database rejected the credentials. Check the user and password.",
+    "dbUnreachable": "Cannot reach the database. Check that the data directory is writable and the disk is not full.",
+    "dbAuth": "The database rejected the connection. Check the data directory permissions.",
     "dbUnknown": "Database error. Check the server logs for details.",
-    "dbNotFound": "The database does not exist. Create it first with CHARACTER SET utf8mb4.",
+    "dbNotFound": "Database file not found — re-run the install wizard to initialize it.",
     "envWriteFailed": "Could not write the .env file. Set the environment variables in your hosting platform instead.",
     "rateLimited": "Too many requests. Please wait a moment and try again.",
     "unauthorized": "Please sign in to continue.",

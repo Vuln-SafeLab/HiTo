@@ -469,6 +469,7 @@ hito/
 - [ ] HTTPS everywhere; confirm responses carry `Strict-Transport-Security` and a nonce-based CSP (middleware emits both in production)
 - [ ] `AUTH_SECRET` is a ≥ 48-byte random value, dedicated and never reused; rotate on leak (this invalidates all sessions and Kun tokens)
 - [ ] Behind a proxy: `TRUST_PROXY=true` and `X-Forwarded-For` forwarded — otherwise IP scoring, bans, rate limits and the attack map all record the proxy IP
+- [ ] Exactly **one** trusted proxy layer rewrites `X-Forwarded-For` (rightmost-hop attribution assumes it); for multi-layer setups, have the outermost proxy overwrite the header
 - [ ] Engine validated in `log` mode for a day, then switched to `block` from the panel (no restart needed)
 - [ ] `WAF_SERVER_GEO` set so the attack map points arcs at your real server location
 - [ ] After install, visiting `/setup` is 302-redirected; `/api/internal/waf/*` rejects anything without a valid HMAC signature
@@ -512,6 +513,18 @@ New user-facing copy must be added to **all 7** `messages/*.json` files with ide
 ---
 
 ## 📝 Changelog
+
+### 2026-08-29 · Security audit round: bypasses closed, rate-limit model fixed
+
+- **Fixed — K3 payload-scan bypass.** A JWT-*shaped* cookie (no signature needed) silenced every L3 SQLi/XSS/traversal rule. The scanner now runs on all requests unconditionally; the shape-only exemption is gone. Verified: the once-200 bypass returns 403.
+- **Fixed — rate-limit identity minting.** Cookie-less clients got a fresh random bucket id per request (limiting was structurally dead for tools that drop cookies). They now share a deterministic `anon:<ip>` bucket — limiting works; with `TRUST_PROXY=true` buckets are per-IP again.
+- **Fixed — admin-lock brute force.** The lock-page password check now has its own failure lock (5 wrong passwords → 15 min), on top of the rate limiter.
+- **Fixed — login loop on plain HTTP.** Auth cookies were `Secure` in any production build, so the documented `http://server-ip` deployment could never log in. Cookies now derive `Secure` from the actual request protocol (`x-forwarded-proto`).
+- **Fixed — dead "release bans" channel.** Admin releases were written but never delivered (`banReleases: []` hardcoded). The config endpoint now consumes pending releases exactly once and deletes them (no accumulation). Verified end-to-end.
+- **Fixed — setup wizard self-lock.** A fresh deployment per the docs hit 403 on every wizard API. The gate now defaults open (out-of-box install) and enforces `SETUP_ALLOW_IPS` / `SETUP_TOKEN` only when explicitly configured.
+- **Fixed — engine mode silently downgraded.** A fresh DB (no `waf.mode` row) made the config endpoint report `log`, overriding `SECURITY_ENGINE_MODE=block`. The mode is now delivered only when an admin has actually set it.
+- **Fixed — misc.** `test-connection` no longer leaks the candidate `DATABASE_URL` into the global Prisma client (reset in `finally`); login per-IP lockout applies only when IPs are attributable (no more "direct"-key DoS); internal APIs reject **replayed** signatures and fail closed on empty `AUTH_SECRET`; chunked uploads without `Content-Length` get 411; `.gitignore` covers `.env.*` + sqlite variants; `install.sh` writes the safe rate-limit driver; stale MySQL copy removed from all 7 locales; env/path docs unified (`prisma/data/navsite.db`).
+- **Regression:** 10/10 fix-verification assertions + 10/10 attack/traffic matrix green after rebuild.
 
 ### 2026-08-29 · WAF hardening round: PoW portability, scanner de-obfuscation, i18n fixes
 

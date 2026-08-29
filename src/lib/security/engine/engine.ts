@@ -297,12 +297,12 @@ export type KunAction =
   | { action: "challenge"; eventId: string; seed: string; returnTo: string }
   | { action: "challenge-pass"; eventId: string; tokenToIssue: string; seed: string };
 
-const JWT_RE = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
-const looksLikeJwt = (v: string): boolean => v.length > 20 && v.split(".").length === 3 && JWT_RE.test(v);
-
 export async function inspectRequest(request: NextRequest): Promise<KunVerdict> {
   try {
     if (MODE === "off") return { action: "allow" };
+    // No signing secret (not yet installed / broken env): PoW tokens would be forgeable
+    // with an empty HMAC key — disable challenge mode entirely (fail-open).
+    if ((process.env.AUTH_SECRET ?? "").trim() === "") return { action: "allow" };
     if (await isInternalSignedRequest(request)) return { action: "allow" };
     await ensureFreshConfig();
     if (runtime.mode === "off") return { action: "allow" };
@@ -400,8 +400,6 @@ export async function inspectRequest(request: NextRequest): Promise<KunVerdict> 
         headerSampleRaw.length <= ENGINE_DEFAULTS.SCAN_TRUNCATE
           ? headerSampleRaw
           : headerSampleRaw.slice(0, ENGINE_DEFAULTS.SCAN_TRUNCATE),
-      cookieHasSession: looksLikeJwt(request.cookies.get("navsite_access")?.value ?? "")
-        || looksLikeJwt(request.cookies.get("navsite_refresh")?.value ?? ""),
     };
 
     let hit: { ruleId: string } | null = scanStructure(scanInput);

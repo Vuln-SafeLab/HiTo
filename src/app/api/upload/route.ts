@@ -33,8 +33,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, code: "forbidden" }, { status: 403 });
   }
 
-  // Pre-flight size cap: reject BEFORE formData() fully buffers into memory (memory DoS)
+  // Pre-flight size cap: reject BEFORE formData() fully buffers into memory (memory DoS).
+  // Chunked requests have no Content-Length — the precheck would be bypassable, so they
+  // must send it (browsers and standard HTTP clients always do for file uploads).
   const declaredLength = Number(request.headers.get("content-length") ?? "0");
+  if (!Number.isFinite(declaredLength) || declaredLength <= 0) {
+    return NextResponse.json({ ok: false, code: "uploadSize" }, { status: 411 });
+  }
   if (declaredLength > MAX_UPLOAD_BYTES + 4096) {
     return NextResponse.json({ ok: false, code: "uploadSize" }, { status: 413 });
   }

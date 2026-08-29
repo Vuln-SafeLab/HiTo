@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# NavSite 本地安装脚本（SQLite 版）
+# HiTo 本地安装脚本（SQLite 版）
 #   ./install.sh            # 安装依赖 + 初始化数据库 + 启动开发服务器
 #   ./install.sh --no-run   # 只装依赖与初始化，不启动
 set -euo pipefail
@@ -34,7 +34,7 @@ if [ ! -f .env ] || ! grep -q "^AUTH_SECRET=" .env; then
     echo "AUTH_SECRET=\"$(openssl rand -base64 48 | tr -d '\n')\""
     echo "ANALYTICS_SALT=\"$(openssl rand -base64 16 | tr -d '\n')\""
     echo "NEXT_PUBLIC_APP_URL=\"http://localhost:3000\""
-    echo "RATE_LIMIT_DRIVER=\"memory\""
+    echo "RATE_LIMIT_DRIVER=\"db\""
   } >> .env
   ok ".env written"
 else
@@ -44,9 +44,9 @@ fi
 # 步骤 3：Prisma client + 数据库迁移（幂等）
 info "prisma generate + migrate deploy…"
 pnpm db:generate
-mkdir -p data
+mkdir -p prisma/data
 pnpm db:deploy
-ok "database ready at ./data/navsite.db"
+ok "database ready at prisma/data/navsite.db"
 
 # 步骤 4：启动
 if [ "$NO_RUN" -eq 1 ]; then

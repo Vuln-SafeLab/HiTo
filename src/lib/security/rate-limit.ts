@@ -109,7 +109,9 @@ const memoryFallback =
   (globalForRateLimit.memoryRateLimiter = new MemoryRateLimiter());
 
 function resolveDriver(): "memory" | "db" {
-  const driver = process.env.RATE_LIMIT_DRIVER === "db" ? "db" : "memory";
+  // Default to the safe backend: a fresh clone building without .env must not
+  // either fail the production guard or silently use single-instance limits.
+  const driver = process.env.RATE_LIMIT_DRIVER === "memory" ? "memory" : "db";
   if (driver === "memory" && process.env.NODE_ENV === "production") {
     throw new Error(
       "[rate-limit] RATE_LIMIT_DRIVER=memory in production — " +

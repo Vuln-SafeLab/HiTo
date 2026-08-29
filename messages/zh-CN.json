@@ -153,10 +153,10 @@
   },
   "errors": {
     "generic": "出了点问题，请重试。",
-    "dbUnreachable": "无法连接数据库服务器，请确认 MySQL 已启动且主机/端口正确。",
-    "dbAuth": "数据库拒绝了该凭据，请检查用户名和密码。",
+    "dbUnreachable": "无法连接数据库，请检查数据目录是否可写，并确认磁盘未满。",
+    "dbAuth": "数据库拒绝了连接，请确认数据目录权限正确。",
     "dbUnknown": "数据库错误，请查看服务器日志。",
-    "dbNotFound": "数据库不存在，请先以 CHARACTER SET utf8mb4 创建。",
+    "dbNotFound": "数据库文件不存在，请重新运行安装向导以完成初始化。",
     "envWriteFailed": "无法写入 .env 文件，请改在托管平台中配置环境变量。",
     "rateLimited": "请求过于频繁，请稍后再试。",
     "unauthorized": "请先登录。",

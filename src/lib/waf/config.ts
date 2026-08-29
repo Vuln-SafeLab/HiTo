@@ -5,6 +5,8 @@ export type WafMode = "off" | "log" | "block";
 
 export interface WafRuntimeConfig {
   mode: WafMode;
+  /** true when a waf.mode row exists in the DB (admin hot-switch); false = env/default */
+  modeConfigured: boolean;
   underAttackQps: number;
   challengeTtl: number;
   windowLimit: number;
@@ -28,6 +30,7 @@ const PREFIX = "waf.";
 
 const DEFAULTS: WafRuntimeConfig = {
   mode: "log",
+  modeConfigured: false,
   underAttackQps: 600,
   challengeTtl: 600,
   windowLimit: 300,
@@ -55,11 +58,13 @@ export async function getWafRuntimeConfig(): Promise<WafRuntimeConfig> {
     if (Array.isArray(parsed)) rulesDisabled = parsed.filter((x): x is string => typeof x === "string");
   } catch { /* fall back to default on bad value */ }
   const rawMode = map.get("mode");
+  const modeConfigured = rawMode !== undefined;
   const mode: WafMode =
     rawMode === "off" || rawMode === "block" || rawMode === "log" ? rawMode : DEFAULTS.mode;
   const attackRaw = map.get("attackModeUntil") ?? "";
   return {
     mode,
+    modeConfigured,
     underAttackQps: num("underAttackQps", DEFAULTS.underAttackQps),
     challengeTtl: num("challengeTtl", DEFAULTS.challengeTtl),
     windowLimit: num("windowLimit", DEFAULTS.windowLimit),

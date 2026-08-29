@@ -153,10 +153,10 @@
   },
   "errors": {
     "generic": "Algo salió mal. Inténtalo de nuevo.",
-    "dbUnreachable": "No se pudo conectar con el servidor de base de datos. Comprueba que MySQL está en ejecución y que el host y el puerto son correctos.",
-    "dbAuth": "La base de datos rechazó las credenciales. Comprueba el usuario y la contraseña.",
+    "dbUnreachable": "No se puede conectar a la base de datos. Comprueba que el directorio de datos sea escribible y que haya espacio en disco.",
+    "dbAuth": "La base de datos rechazó la conexión. Comprueba los permisos del directorio de datos.",
     "dbUnknown": "Error de base de datos. Consulta los registros del servidor.",
-    "dbNotFound": "La base de datos no existe. Créala primero con CHARACTER SET utf8mb4.",
+    "dbNotFound": "Archivo de base de datos no encontrado; vuelve a ejecutar el asistente de instalación para inicializarlo.",
     "envWriteFailed": "No se pudo escribir el archivo .env. Configura las variables de entorno en tu plataforma de alojamiento.",
     "rateLimited": "Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.",
     "unauthorized": "Inicia sesión para continuar.",

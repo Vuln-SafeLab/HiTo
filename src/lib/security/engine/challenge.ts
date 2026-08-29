@@ -21,8 +21,11 @@ export function readChallengeCookies(request: {
   };
 }
 
-function secretKey(): Uint8Array {
-  return new TextEncoder().encode(process.env.AUTH_SECRET ?? "");
+function secretKey(): Uint8Array | null {
+  const secret = process.env.AUTH_SECRET ?? "";
+  // Empty secret => tokens forgeable by anyone: refuse (caller fails closed/open safely).
+  if (secret.trim() === "") return null;
+  return new TextEncoder().encode(secret);
 }
 
 async function sha256Hex(input: string): Promise<string> {
@@ -47,13 +50,15 @@ export async function verifyPow(seed: string, nonce: string, prefix: string): Pr
 }
 
 export async function issueToken(seed: string, ttlSeconds: number): Promise<string> {
+  const key = secretKey();
+  if (key === null) throw new Error("AUTH_SECRET is not configured");
   const seedHash = await sha256Hex(seed);
   return await new SignJWT({ s: seedHash.slice(0, 16) })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuer(ISSUER)
     .setIssuedAt()
     .setExpirationTime(Math.floor(Date.now() / 1000) + ttlSeconds)
-    .sign(secretKey());
+    .sign(key);
 }
 
 export async function verifyToken(
@@ -61,8 +66,10 @@ export async function verifyToken(
   currentSeed: string | undefined,
   ttlSeconds: number
 ): Promise<boolean> {
+  const key = secretKey();
+  if (key === null) return false;
   try {
-    const { payload } = await jwtVerify(token, secretKey(), { issuer: ISSUER });
+    const { payload } = await jwtVerify(token, key, { issuer: ISSUER });
     if (typeof payload.s !== "string") return false;
     if (currentSeed !== undefined) {
       const expect = (await sha256Hex(currentSeed)).slice(0, 16);

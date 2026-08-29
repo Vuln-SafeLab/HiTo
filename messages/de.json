@@ -153,10 +153,10 @@
   },
   "errors": {
     "generic": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
-    "dbUnreachable": "Der Datenbankserver ist nicht erreichbar. Prüfe, ob MySQL läuft und Host/Port korrekt sind.",
-    "dbAuth": "Die Datenbank hat die Zugangsdaten abgelehnt. Prüfe Benutzer und Passwort.",
+    "dbUnreachable": "Datenbank nicht erreichbar. Prüfe, ob das Datenverzeichnis beschreibbar ist und die Festplatte nicht voll ist.",
+    "dbAuth": "Die Datenbank hat die Verbindung abgelehnt. Prüfe die Berechtigungen des Datenverzeichnisses.",
     "dbUnknown": "Datenbankfehler. Prüfe die Server-Logs.",
-    "dbNotFound": "Die Datenbank existiert nicht. Lege sie zuerst mit CHARACTER SET utf8mb4 an.",
+    "dbNotFound": "Datenbankdatei nicht gefunden — führe den Installationsassistenten erneut aus.",
     "envWriteFailed": "Die .env-Datei konnte nicht geschrieben werden. Setze die Umgebungsvariablen stattdessen bei deinem Hosting-Anbieter.",
     "rateLimited": "Zu viele Anfragen. Bitte warte einen Moment und versuche es erneut.",
     "unauthorized": "Bitte melde dich an, um fortzufahren.",

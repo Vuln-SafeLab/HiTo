@@ -31,7 +31,15 @@ function cleanIpCache(): void {
   }
 }
 
+// With TRUST_PROXY=false every client shares the "direct" key: a per-IP lock would
+// let one attacker DoS login for ALL visitors. Only apply it when the IP is
+// attributable (TRUST_PROXY=true); otherwise per-username locks + rate limiting carry the load.
+function ipLockEnabled(): boolean {
+  return process.env.TRUST_PROXY === "true";
+}
+
 function isIpGloballyLocked(ip: string): boolean {
+  if (!ipLockEnabled()) return false;
   cleanIpCache();
   const entry = ipFailureCache.get(ip);
   if (entry !== undefined && entry.count >= IP_MAX_FAILURES && entry.until > Date.now()) return true;
@@ -39,6 +47,7 @@ function isIpGloballyLocked(ip: string): boolean {
 }
 
 function recordIpFailure(ip: string): void {
+  if (!ipLockEnabled()) return;
   cleanIpCache();
   const existing = ipFailureCache.get(ip);
   if (existing !== undefined) {

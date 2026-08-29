@@ -40,6 +40,37 @@ const unlockSchema = z.object({
   password: z.string().min(1).max(128),
 });
 
+// Unlock brute-force defense: the unlock endpoint checks the ADMIN password with no
+// session, so it needs its own failure lock — the generic rate limiter alone would let
+// an attacker grind guesses forever at the allowed rate.
+const UNLOCK_MAX_FAILURES = 5;
+const UNLOCK_LOCK_MS = 15 * 60_000;
+const globalForUnlockLock = globalThis as unknown as { unlockFailures?: Map<string, { count: number; until: number }> };
+const unlockFailures = (globalForUnlockLock.unlockFailures ??= new Map());
+
+function unlockLocked(key: string): boolean {
+  const entry = unlockFailures.get(key);
+  if (entry === undefined) return false;
+  if (entry.until <= Date.now()) {
+    unlockFailures.delete(key);
+    return false;
+  }
+  return true;
+}
+
+function recordUnlockFailure(key: string): void {
+  const entry = unlockFailures.get(key);
+  if (entry === undefined || entry.until <= Date.now()) {
+    unlockFailures.set(key, { count: 1, until: Date.now() + UNLOCK_LOCK_MS });
+  } else {
+    entry.count += 1;
+    if (entry.count >= UNLOCK_MAX_FAILURES) {
+      entry.until = Date.now() + UNLOCK_LOCK_MS;
+      entry.count = 0;
+    }
+  }
+}
+
 // Early unlock from lock page: admin password check + login rate limit (no session)
 export async function unlockEarlyAction(input: unknown): Promise<ActionResult> {
   const headerStore = await headers();
@@ -49,6 +80,7 @@ export async function unlockEarlyAction(input: unknown): Promise<ActionResult> {
   if (await isIpBanned(ip)) return fail("forbidden");
   const rate = await checkRate("login", clientKey);
   if (!rate.ok) return fail("rateLimited");
+  if (unlockLocked(clientKey)) return fail("rateLimited");
 
   const parsed = unlockSchema.safeParse(input);
   if (!parsed.success) return fail("generic");
@@ -62,6 +94,7 @@ export async function unlockEarlyAction(input: unknown): Promise<ActionResult> {
   if (admin === null) return fail("generic");
   const okPass = await bcryptjs.compare(parsed.data.password, admin.passwordHash);
   if (!okPass) {
+    recordUnlockFailure(clientKey);
     await writeAudit({
       userId: admin.id,
       username: admin.username,
@@ -72,6 +105,7 @@ export async function unlockEarlyAction(input: unknown): Promise<ActionResult> {
     });
     return fail("invalid");
   }
+  unlockFailures.delete(clientKey);
   await setWafConfig("adminLockUntil", "");
   await writeAudit({
     userId: admin.id,

@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { getEnv } from "@/lib/env";
+import { isSecureRequest } from "@/lib/http";
 
 const CC_COOKIE = "hito_cc";
 const CC_TTL_SECONDS = 24 * 3600;
@@ -51,12 +52,19 @@ export async function getClientIdentifier(headers: Headers): Promise<string> {
     store.set(CC_COOKIE, `${ccId}.${sig}`, {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: await isSecureRequest(),
       path: "/",
       maxAge: CC_TTL_SECONDS,
     });
   }
-  return `cc:${ccId}|ip:${resolveIp(headers)}`;
+  // Anti-evasion: cookie-less clients get a DETERMINISTIC `anon:<ip>` key, never a
+  // fresh random id (that would mint a new rate-limit bucket per request and neuter
+  // limiting). With TRUST_PROXY=false everyone shares the "direct" bucket — limiting
+  // works at the cost of a shared budget, until real IPs are available.
+  const ip = resolveIp(headers);
+  return existing !== ""
+    ? `cc:${ccId}|ip:${ip}`
+    : `anon:${ip}`;
 }
 
 function resolveIp(headers: Headers): string {

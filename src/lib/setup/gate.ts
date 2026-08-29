@@ -20,12 +20,20 @@ function tokenAllowed(headers: Headers): boolean {
 }
 
 export async function isSetupAllowed(headers: Headers): Promise<boolean> {
+  const allowIps = allowedOverride();
+  const hasToken = (process.env.SETUP_TOKEN ?? "").trim() !== "";
+  // Default (no SETUP_ALLOW_IPS / no SETUP_TOKEN configured): the documented flow —
+  // clone, start, walk the wizard from any address — must work out of the box.
+  // The window is short (wizard locks permanently once installed). Operators on
+  // exposed servers can opt into strict mode by setting either variable.
+  if (allowIps.length === 0 && !hasToken) return true;
+
   const clientIp = getClientIp(headers);
-  if (allowedOverride().includes(clientIp)) return true;
+  if (allowIps.includes(clientIp)) return true;
   if (tokenAllowed(headers)) return true;
-  // Setup authorization requires an explicit trust anchor (SETUP_ALLOW_IPS or SETUP_TOKEN).
-  // Never derive the setup pin from XFF/X-Real-IP — those headers are client-controlled
-  // even with TRUST_PROXY=true. This blocks the takeover path where a remote attacker
-  // spoofs XFF to bind the setup pin to themselves and create the first admin.
+  // Strict mode: setup authorization requires an explicit trust anchor. Never derive
+  // the setup pin from XFF/X-Real-IP — those headers are client-controlled even with
+  // TRUST_PROXY=true. This blocks the takeover path where a remote attacker spoofs
+  // XFF to bind the setup pin to themselves and create the first admin.
   return false;
 }

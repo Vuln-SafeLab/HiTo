@@ -30,7 +30,6 @@ export interface ScanInput {
   pathname: string;
   search: string;
   headerSample: string;
-  cookieHasSession: boolean;
 }
 
 export type ScanHit = { ruleId: string } | null;
@@ -86,9 +85,10 @@ function safeDecodeTwice(input: string): string | null {
   }
 }
 
-/** L3 skips session cookies to reduce false positives. */
+/** L3 payload scan: runs on EVERY request. The former "skip for session-cookie
+ *  bearers" exemption was a bypass — a JWT-shaped cookie needs no valid signature,
+ *  so anonymous attackers could silence all K3 rules with `navsite_access=x.y.z`. */
 export function scanPayload(input: ScanInput): ScanHit {
-  if (input.cookieHasSession) return null;
   const raw = truncate(input.pathname + input.search);
   const once = truncate(decodeOnce(input.pathname + input.search) + "\n" + input.headerSample);
   // Double-decoded haystack catches %2527-style double-encoding bypasses.

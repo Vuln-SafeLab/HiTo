@@ -469,6 +469,7 @@ hito/
 - [ ] 全站 HTTPS；确认响应带 `Strict-Transport-Security` 与基于 nonce 的 CSP（生产由中间件输出）
 - [ ] `AUTH_SECRET` 为 ≥ 48 字节随机值、专用不复用；泄露后轮换（会使所有会话与 Kun 令牌失效）
 - [ ] 反代环境：`TRUST_PROXY=true` 且正确转发 `X-Forwarded-For` —— 否则 IP 打分、封禁、限流、攻击地图记录的全是代理 IP
+- [ ] 只允许**一层**可信代理覆写 `X-Forwarded-For`（取最右跳的归因假设）；多层代理时由最外层统一覆写
 - [ ] 引擎先以 `log` 模式跑一天确认无误拦，再在后台切 `block`（无需重启）
 - [ ] 设置 `WAF_SERVER_GEO`，让攻击地图弧线指向真实服务器位置
 - [ ] 安装完成后访问 `/setup` 被 302；`/api/internal/waf/*` 对无 HMAC 签名请求一律 401
@@ -512,6 +513,18 @@ pnpm lint        # 零警告
 ---
 
 ## 📝 更新日志
+
+### 2026-08-29 · 安全审计修复轮：绕过封堵、限流模型修正
+
+- **修复 —— K3 载荷扫描绕过。** 一个只有 JWT *形状*（无需有效签名）的 Cookie 就能让全部 L3 SQLi/XSS/穿越规则静默失效。扫描器现无条件作用于所有请求。实测：原 200 的绕过现已 403。
+- **修复 —— 限流身份轮换。** 不带 Cookie 的客户端每请求都会被签发全新随机桶 ID（对丢 Cookie 的攻击工具限流形同虚设）。现回退到确定性的 `anon:<ip>` 共享桶 —— 限流生效；`TRUST_PROXY=true` 时恢复按 IP 隔离。
+- **修复 —— 管理锁爆破。** 锁定页的密码校验新增独立失败锁（错 5 次 → 15 分钟），叠加在限流之上。
+- **修复 —— 纯 HTTP 登录死循环。** 生产构建的鉴权 Cookie 一律 `Secure`，导致文档里的 `http://服务器IP` 部署永远登录不上。现按真实请求协议（`x-forwarded-proto`）推导 `Secure`。
+- **修复 —— 「解封」死代码。** 后台解封只写库、引擎永远收不到（`banReleases` 硬编码空数组）。配置端点现按「恰好一次」消费解封指令并删除记录（不再无限累积）。端到端实测通过。
+- **修复 —— 安装向导自锁。** 按文档全新部署时向导 API 全部 403。闸门默认放开（开箱即装），仅当显式配置 `SETUP_ALLOW_IPS` / `SETUP_TOKEN` 时才启用严格模式。
+- **修复 —— 引擎模式被静默降级。** 全新数据库（无 `waf.mode` 行）会让配置端点返回默认 `log`，覆盖 `SECURITY_ENGINE_MODE=block`。现仅当管理员真正设置过模式时才下发。
+- **修复 —— 其他。** `test-connection` 不再把候选 `DATABASE_URL` 泄漏进全局 Prisma 单例（`finally` 中复位）；登录 IP 级锁定仅在 IP 可归因时启用（杜绝 "direct" 键 DoS）；内部 API 拒绝**重放**签名、`AUTH_SECRET` 为空时整体 fail-closed；无 `Content-Length` 的 chunked 上传返回 411；`.gitignore` 补齐 `.env.*` 与 sqlite 变体；`install.sh` 写入安全限流驱动；7 语言包清除残留 MySQL 文案；数据库路径文档统一为 `prisma/data/navsite.db`。
+- **回归：** 重建后 10/10 修复验证断言 + 10/10 攻击/流量矩阵全绿。
 
 ### 2026-08-29 · WAF 加固轮：PoW 可移植性、扫描器反混淆、i18n 修复
 
