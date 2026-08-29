@@ -17,9 +17,9 @@ services:
     image: YOUR_DOCKERHUB_USERNAME/navsite:latest
     restart: unless-stopped
     environment:
-      # SQLite 连接串：单写者模型，connection_limit=1 避免 SQLITE_BUSY；
+      # SQLite 连接串：WAL 模式，connection_limit=3（读并行、busy_timeout 防写冲突）；
       # 未设置时安装向导会写入 .env（默认 file:./data/navsite.db?connection_limit=1）
-      DATABASE_URL: ${DATABASE_URL:-file:/app/data/navsite.db?connection_limit=1}
+      DATABASE_URL: ${DATABASE_URL:-file:/app/data/navsite.db?connection_limit=3}
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET (openssl rand -base64 48)}
       ANALYTICS_SALT: ${ANALYTICS_SALT:?set ANALYTICS_SALT (openssl rand -base64 16)}
       NEXT_PUBLIC_APP_URL: ${PUBLIC_URL:?set PUBLIC_URL (e.g. http://server-ip)}

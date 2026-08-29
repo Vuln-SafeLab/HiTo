@@ -12,11 +12,13 @@ export class DatabaseNotConfiguredError extends Error {
 // In dev, Next HMR re-evaluates modules; new PrismaClient per re-eval would each hold a connection pool.
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-// Single-writer SQLite: ?connection_limit=1, WAL journal, busy_timeout=5000
+// Single-writer SQLite: WAL journal, busy_timeout, synchronous=NORMAL (safe with WAL,
+// ~2-3× faster writes than FULL), foreign_keys
 async function initSqlitePragmas(db: PrismaClient): Promise<void> {
   try {
     await db.$queryRawUnsafe("PRAGMA journal_mode=WAL");
     await db.$queryRawUnsafe("PRAGMA busy_timeout=5000");
+    await db.$queryRawUnsafe("PRAGMA synchronous=NORMAL");
     await db.$queryRawUnsafe("PRAGMA foreign_keys=ON");
   } catch (error) {
     // PRAGMA failure is non-fatal (e.g. DB file not yet writable pre-install)

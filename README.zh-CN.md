@@ -137,7 +137,7 @@
 | 动效 | Framer Motion | 11.15.0 |
 | 国际化 | next-intl | 3.26.3 |
 | ORM | Prisma + @prisma/client | 6.8.2 |
-| 数据库 | SQLite（单文件，`connection_limit=1` 单写者模型） | 内置 |
+| 数据库 | SQLite（单文件，`connection_limit=3` WAL 模式） | 内置 |
 | 校验 / 表单 | Zod + react-hook-form | 3.24.1 / 7.54.2 |
 | 鉴权 | jose（JWT）+ bcryptjs | 5.9.6 / 2.4.3 |
 | 拖拽 / 命令面板 / 缓存 | @hello-pangea/dnd / cmdk / lru-cache | 18.0.1 / 1.0.4 / 11.0.2 |
@@ -538,6 +538,8 @@ pnpm lint        # 零警告
 - **新增 —— 鲲引擎专属图标**：青色盾徽 + 墨色面板 + 白/青指针 + 轴点，512 px 光栅化后内联进 403/429/挑战页（显示 ≤84px CSS → ≥6× 密度，2K/4K 屏清晰；替换此前被拉伸的 32px 图标）。
 - **修复 —— 所有经过中间件的路由都可能永久挂起。** 边缘引擎的配置自拉取目标是 `/api/internal/waf/*`，而它未被中间件排除 —— 嵌套请求重新进入中间件并等待自身的 in-flight 配置拉取，形成死锁。匹配器现排除 `api/internal`（其已有 HMAC 保护，无需闸门），且引擎/中间件的所有自拉取均加 `AbortSignal.timeout` 超时。
 - **验证：** 全新数据库启动不再卡死；排除路由始终存活，受闸门路由按预期响应（302/401/200）。
+- **性能：** `getSiteSettings` 加入缓存（公开页每请求少一次 DB 查询）；SQLite `synchronous=NORMAL`（WAL 安全、写入更快）；中间件匹配器排除静态资源扩展名（图片/字体不再过 WAF，探针覆盖不变）。
+- **媒体：** 演示 GIF 正式重录 —— 确定性 SMIL 时钟步进（144 帧 @ 12fps，1240px，1.9MB，不再卡顿，录制前先清除告警弹窗）；首页截图改为干净的视口构图。
 
 ### 2026-08-29 · 统计图表从未渲染过 + README 媒体
 

@@ -123,12 +123,23 @@ export async function getSeoSettingsRaw(): Promise<Record<string, string>> {
   return Object.fromEntries(rows.map((row) => [row.key, row.value]));
 }
 
-export async function getSiteSettings(): Promise<SiteSettings> {
-  try {
+// Site settings render on every public request (home header/footer): cache 60s,
+// invalidated via the settings tag on save (same idiom as SEO/appearance caches).
+const getCachedSettingsRows = unstable_cache(
+  async (): Promise<Array<[string, string]>> => {
     const rows = await getDb().systemConfig.findMany({
       where: { key: { in: Object.values(SETTINGS_KEYS) } },
     });
-    const map = new Map(rows.map((row) => [row.key, row.value]));
+    return rows.map((row) => [row.key, row.value]);
+  },
+  ["site-settings"],
+  { revalidate: 60, tags: [SETTINGS_TAG] }
+);
+
+export async function getSiteSettings(): Promise<SiteSettings> {
+  try {
+    const cached = await getCachedSettingsRows();
+    const map = new Map(cached);
     return {
       siteName: emptyToNull(map.get(SETTINGS_KEYS.siteName)) ?? DEFAULTS.siteName,
       logo: emptyToNull(map.get(SETTINGS_KEYS.logo)),

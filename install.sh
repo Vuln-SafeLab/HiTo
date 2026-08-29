@@ -30,7 +30,7 @@ fi
 if [ ! -f .env ] || ! grep -q "^AUTH_SECRET=" .env; then
   info "generating .env with random secrets…"
   {
-    echo "DATABASE_URL=\"file:./data/navsite.db?connection_limit=1\""
+    echo "DATABASE_URL=\"file:./data/navsite.db?connection_limit=3\""
     echo "AUTH_SECRET=\"$(openssl rand -base64 48 | tr -d '\n')\""
     echo "ANALYTICS_SALT=\"$(openssl rand -base64 16 | tr -d '\n')\""
     echo "NEXT_PUBLIC_APP_URL=\"http://localhost:3000\""

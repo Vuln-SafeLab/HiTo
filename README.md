@@ -137,7 +137,7 @@ What fundamentally sets it apart from similar tools:
 | Motion | Framer Motion | 11.15.0 |
 | i18n | next-intl | 3.26.3 |
 | ORM | Prisma + @prisma/client | 6.8.2 |
-| Database | SQLite (single file, `connection_limit=1` single-writer) | built-in |
+| Database | SQLite (single file, `connection_limit=3` WAL) | built-in |
 | Validation / forms | Zod + react-hook-form | 3.24.1 / 7.54.2 |
 | Auth | jose (JWT) + bcryptjs | 5.9.6 / 2.4.3 |
 | DnD / palette / caches | @hello-pangea/dnd / cmdk / lru-cache | 18.0.1 / 1.0.4 / 11.0.2 |
@@ -538,6 +538,8 @@ New user-facing copy must be added to **all 7** `messages/*.json` files with ide
 - **Added — a dedicated Kun engine mark**: cyan shield + ink panel + white/cyan needle + hub node, rasterized at 512 px and inlined into the 403/429/challenge pages (displayed ≤84 px CSS → ≥6× density, crisp on 2K/4K screens; replaces the 32 px icon that was being stretched).
 - **Fixed — every middleware-gated route could hang forever.** The edge engine's config self-fetch targeted `/api/internal/waf/*`, which was NOT excluded from the middleware — the nested request re-entered the middleware and awaited its own in-flight config pull. The matcher now excludes `api/internal` (it is HMAC-protected and needs no gating), and every engine/middleware self-fetch is time-boxed with `AbortSignal.timeout`.
 - Verified: fresh-DB boot no longer wedges; excluded routes stay live while gated routes respond normally (302/401/200 as appropriate).
+- **Perf:** `getSiteSettings` now cached (one fewer DB query per public request); SQLite `synchronous=NORMAL` (WAL-safe, faster writes); static asset extensions excluded from the middleware matcher (no WAF scan on images/fonts — probe coverage unchanged).
+- **Media:** demo GIF re-recorded properly — deterministic SMIL clock stepping (144 frames @ 12 fps, 1240 px, 1.9 MB, no more choppiness) after the alert modal was dismissed; home screenshot is now a clean viewport shot.
 
 ### 2026-08-29 · Statistics that never rendered + README media
 
