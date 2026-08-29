@@ -158,12 +158,12 @@ export function WafConsole(props: WafConsoleProps) {
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <section className="rounded-card border border-border bg-card p-5 xl:col-span-2">
             <h2 className="mb-3 text-sm font-semibold">{t("waf.trend7d")}</h2>
-            <div className="flex h-32 items-end gap-2" aria-hidden="true">
+            <div className="flex h-40 items-end gap-2" aria-hidden="true">
               {p.trend.map((pt) => (
-                <div key={pt.day} className="flex flex-1 flex-col items-center gap-1">
+                <div key={pt.day} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
                   <div
                     className="w-full rounded-t bg-accent-gradient transition-all"
-                    style={{ height: `${Math.max(2, (pt.count / maxTrend) * 100)}%` }}
+                    style={{ height: `max(2px, calc(${((pt.count / maxTrend) * 100).toFixed(1)}% - 16px))` }}
                     title={`${pt.day}: ${pt.count}`}
                   />
                   <span className="text-[10px] text-faint">{pt.day.slice(5)}</span>

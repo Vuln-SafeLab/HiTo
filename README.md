@@ -16,6 +16,13 @@
   <b>English</b> · <a href="./README.zh-CN.md">简体中文</a>
 </p>
 
+<p align="center">
+  <a href="./docs/screenshots/demo.gif"><img src="./docs/screenshots/demo.gif" alt="HiTo — live global attack map (Kun WAF) and liquid-glass UI in action" width="100%" /></a>
+</p>
+<p align="center">
+  <sub><b>Kun 1.0 edge WAF</b> — live dot-matrix attack map with real-time arcs · <b>iOS-style liquid-glass</b> category pills (true refraction on Chromium)</sub>
+</p>
+
 > **HiTo** is a self-hosted tool & resource directory: a polished public front-end + a full admin back-office + a first-run install wizard + **a real edge WAF with a live global attack map**. **A fresh clone goes live without editing a single line of code** — SQLite is built in, so there is no database server to install: the first visit lands on a four-step wizard, you create an admin, and you're live. Think a self-hosted, data-you-own alternative to Linktree / start-page directories — with the security engine most projects promise in a README actually running in `middleware.ts`.
 
 ---
@@ -99,11 +106,15 @@ What fundamentally sets it apart from similar tools:
 
 ## 3. Screenshots
 
-> The images below are placeholders. Drop real screenshots of your deployment into `docs/screenshots/` and replace them.
-
-| Public home | Attack map (admin) | Install wizard |
+| Home | Install wizard | WAF console · attack map |
 |:---:|:---:|:---:|
-| _`docs/screenshots/home.png`_ | _`docs/screenshots/attack-map.png`_ | _`docs/screenshots/setup.png`_ |
+| ![Home](./docs/screenshots/home.png) | ![Install wizard](./docs/screenshots/setup.png) | ![WAF console](./docs/screenshots/waf-console.png) |
+
+| Appearance studio | Admin dashboard |
+|:---:|:---:|
+| ![Appearance studio](./docs/screenshots/appearance.png) | ![Dashboard](./docs/screenshots/dashboard.png) |
+
+<p align="center"><sub>All screenshots were taken from a real running instance (demo data). Capture your own into <code>docs/screenshots/</code>.</sub></p>
 
 ---
 
@@ -513,6 +524,12 @@ New user-facing copy must be added to **all 7** `messages/*.json` files with ide
 ---
 
 ## 📝 Changelog
+
+### 2026-08-29 · Statistics that never rendered + README media
+
+- **Fixed — WAF console statistics were empty on every SQLite deployment.** Prisma stores SQLite datetimes as integer milliseconds, but the raw SQL compared them against `datetime('now', …)` text (INTEGER < TEXT always → 0 rows) and grouped with `strftime` on raw ms. The 7-day trend, 24h distribution, Top-IPs and today-total now use unixepoch-integer windows and `strftime(..., at/1000, 'unixepoch', 'localtime')` day keys. Same fix applied to the dashboard 30-day click trend.
+- **Fixed — trend bars collapsed to 0 px.** Percentage heights resolved against an auto-height flex parent; columns now own a definite height.
+- **Added — real README media**: a 21 s GIF (live attack-map arcs + liquid-glass pill spring, 1.7 MB) at the top, plus genuine screenshots of home / install wizard / WAF console / appearance studio / dashboard.
 
 ### 2026-08-29 · Security audit round: bypasses closed, rate-limit model fixed
 

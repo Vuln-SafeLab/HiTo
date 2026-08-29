@@ -16,6 +16,13 @@
   <a href="./README.md">English</a> · <b>简体中文</b>
 </p>
 
+<p align="center">
+  <a href="./docs/screenshots/demo.gif"><img src="./docs/screenshots/demo.gif" alt="HiTo — Kun WAF 实时全球攻击地图 + iOS 液态玻璃界面" width="100%" /></a>
+</p>
+<p align="center">
+  <sub><b>Kun 1.0 边缘安全引擎</b> —— 实时点阵攻击地图 + 攻击弧线 · <b>iOS 风格液态玻璃</b>分类胶囊（Chromium 真折射）</sub>
+</p>
+
 > **HiTo** 是一个自托管的工具/资源导航站：精致的公开前台 + 完整的后台管理 + 首次部署安装向导 + **一个真正跑在边缘中间件里的 WAF 和实时全球攻击地图**。**克隆仓库后无需改任何一行代码即可上线** —— SQLite 内置于应用，没有数据库服务器要装：首访自动进入四步向导，建一个管理员，站点即可用。可以理解为「自托管、数据自己掌控」版的 Linktree / 起始页导航站 —— 别的项目在 README 里承诺的安全能力，HiTo 直接跑在 `middleware.ts` 里。
 
 ---
@@ -99,11 +106,15 @@
 
 ## 三、界面截图
 
-> 下方为占位。把你部署环境的真实截图放到 `docs/screenshots/` 目录并替换即可。
-
-| 公开首页 | 攻击地图（后台） | 安装向导 |
+| 公开首页 | 安装向导 | WAF 控制台 · 攻击地图 |
 |:---:|:---:|:---:|
-| _`docs/screenshots/home.png`_ | _`docs/screenshots/attack-map.png`_ | _`docs/screenshots/setup.png`_ |
+| ![公开首页](./docs/screenshots/home.png) | ![安装向导](./docs/screenshots/setup.png) | ![WAF 控制台](./docs/screenshots/waf-console.png) |
+
+| 界面风格工作室 | 后台概览 |
+|:---:|:---:|
+| ![界面风格工作室](./docs/screenshots/appearance.png) | ![后台概览](./docs/screenshots/dashboard.png) |
+
+<p align="center"><sub>以上截图全部来自真实运行的实例（演示数据）。部署后可自行截屏放入 <code>docs/screenshots/</code> 替换。</sub></p>
 
 ---
 
@@ -513,6 +524,12 @@ pnpm lint        # 零警告
 ---
 
 ## 📝 更新日志
+
+### 2026-08-29 · 统计图表从未渲染过 + README 媒体
+
+- **修复 —— 所有 SQLite 部署的 WAF 统计都是空的。** Prisma 在 SQLite 中把日期时间存为整数毫秒，而原始 SQL 却拿它和 `datetime('now', …)` 文本比较（INTEGER 恒小于 TEXT → 永远 0 行），分组用的 `strftime` 也直接作用于毫秒。近 7 日趋势、24h 分布、Top-IP、今日总量全部改为 unixepoch 整数窗口 + `strftime(..., at/1000, 'unixepoch', 'localtime')` 日期键。后台概览的 30 天点击趋势同款问题一并修复。
+- **修复 —— 趋势柱条塌缩为 0 px。** 百分比高度解析在 auto 高度的 flex 父容器上；列容器改为持有确定高度。
+- **新增 —— README 真实媒体**：顶部 21 秒 GIF（实时攻击地图弧线 + 液态玻璃胶囊弹簧动效，1.7 MB），以及首页 / 安装向导 / WAF 控制台 / 界面风格工作室 / 后台概览五张真实截图。
 
 ### 2026-08-29 · 安全审计修复轮：绕过封堵、限流模型修正
 

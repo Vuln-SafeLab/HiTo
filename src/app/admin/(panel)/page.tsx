@@ -18,7 +18,7 @@ async function getTrend(): Promise<TrendPoint[]> {
   since.setDate(since.getDate() - 29);
 
   const rows = await getDb().$queryRaw<Array<{ day: string; total: number }>>`
-    SELECT strftime('%Y-%m-%d', createdAt) AS day, COUNT(*) AS total
+    SELECT strftime('%Y-%m-%d', createdAt / 1000, 'unixepoch', 'localtime') AS day, COUNT(*) AS total
     FROM click_events
     WHERE createdAt >= ${since}
     GROUP BY day
