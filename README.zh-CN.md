@@ -27,6 +27,13 @@
 
 ---
 
+<p align="center">
+  <a href="./docs/screenshots/liquid-glass.gif"><img src="./docs/screenshots/liquid-glass.gif" alt="iOS 风格液态玻璃分类胶囊 —— 切换时的弹簧动效" width="72%" /></a>
+</p>
+<p align="center">
+  <sub><b>液态玻璃胶囊</b> —— 来回切换原速实录（逐帧捕获弹簧飞行）</sub>
+</p>
+
 ## 📖 目录
 
 - [一、这是什么](#一这是什么)
