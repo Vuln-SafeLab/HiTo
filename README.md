@@ -28,7 +28,7 @@
 ---
 
 <p align="center">
-  <a href="./docs/screenshots/liquid-glass.gif"><img src="./docs/screenshots/liquid-glass.gif" alt="iOS-style liquid-glass category pills — spring physics while switching" width="72%" /></a>
+  <a href="./docs/screenshots/liquid-glass.gif"><img src="./docs/screenshots/liquid-glass.gif" alt="iOS-style liquid-glass category pills — spring physics while switching" width="85%" /></a>
 </p>
 <p align="center">
   <sub><b>Liquid-glass pills</b> — back-and-forth switching at native speed (spring flight captured frame-by-frame)</sub>
