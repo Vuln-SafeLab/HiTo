@@ -1,0 +1,51 @@
+# 单容器开箱即用：NavSite(SQLite) + nginx 入口。无外部数据库依赖。
+#
+# 用法:
+#   1) 在同目录创建 .env 文件（compose 强制要求以下变量，缺失拒绝启动）:
+#        AUTH_SECRET=<openssl rand -base64 48>
+#        ANALYTICS_SALT=<openssl rand -base64 16>
+#        PUBLIC_URL=http://服务器IP
+#   2) docker compose -f docker-compose.prod.yml up -d
+#   3) 浏览器打开 http://服务器IP 走安装向导（数据目录保持默认 ./data）
+#
+# 数据持久化: SQLite 文件位于命名卷 app-data (/app/data/navsite.db)，
+# 上传与备份分别独立成卷；换机器直接备份三个卷即可。
+name: navsite
+
+services:
+  app:
+    image: YOUR_DOCKERHUB_USERNAME/navsite:latest
+    restart: unless-stopped
+    environment:
+      # SQLite 连接串：单写者模型，connection_limit=1 避免 SQLITE_BUSY；
+      # 未设置时安装向导会写入 .env（默认 file:./data/navsite.db?connection_limit=1）
+      DATABASE_URL: ${DATABASE_URL:-file:/app/data/navsite.db?connection_limit=1}
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET (openssl rand -base64 48)}
+      ANALYTICS_SALT: ${ANALYTICS_SALT:?set ANALYTICS_SALT (openssl rand -base64 16)}
+      NEXT_PUBLIC_APP_URL: ${PUBLIC_URL:?set PUBLIC_URL (e.g. http://server-ip)}
+      # 流量经本 compose 的 nginx 进入：应用信任其覆写的 XFF 计算真实客户端 IP
+      TRUST_PROXY: "true"
+    volumes:
+      - app-data:/app/data
+      - uploads:/app/public/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  edge:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  app-data:
+  uploads:

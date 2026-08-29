@@ -1,0 +1,63 @@
+<svg width="1280" height="400" viewBox="0 0 1280 400" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NavSite">
+  <defs>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.22"/>
+      <stop offset="55%" stop-color="#22D3EE" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#0A0A0B" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0A0A0B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#0A0A0B" stop-opacity="0.9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- base -->
+  <rect width="1280" height="400" fill="#0A0A0B"/>
+  <rect width="1280" height="400" fill="url(#grid)"/>
+  <rect width="1280" height="400" fill="url(#glow)"/>
+  <rect width="1280" height="400" fill="url(#fade)"/>
+
+  <!-- compass mark -->
+  <g transform="translate(150 200)">
+    <circle r="70" fill="none" stroke="url(#accent)" stroke-width="2.5" stroke-opacity="0.85"/>
+    <circle r="70" fill="#141416" fill-opacity="0.5"/>
+    <path d="M0 -44 L15 12 L0 4 L-15 12 Z" fill="url(#accent)"/>
+    <path d="M0 44 L11 -8 L0 -2 L-11 -8 Z" fill="#ffffff" fill-opacity="0.28"/>
+    <circle r="4.5" fill="#ffffff"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="290" y="196" font-family="'Geist','Inter','Segoe UI',system-ui,sans-serif" font-size="104" font-weight="700" letter-spacing="-3" fill="url(#accent)">NavSite</text>
+
+  <!-- tagline -->
+  <text x="294" y="250" font-family="'Geist','Inter','Segoe UI',system-ui,sans-serif" font-size="27" font-weight="500" letter-spacing="0.3" fill="#ffffff" fill-opacity="0.66">A self-hosted resource directory that installs itself.</text>
+
+  <!-- feature chips -->
+  <g font-family="'Geist','Inter','Segoe UI',system-ui,sans-serif" font-size="17" font-weight="500" fill="#ffffff" fill-opacity="0.72">
+    <g transform="translate(294 292)">
+      <rect x="0" y="0" width="196" height="38" rx="19" fill="#141416" stroke="#ffffff" stroke-opacity="0.10"/>
+      <circle cx="24" cy="19" r="4" fill="#22D3EE"/>
+      <text x="40" y="25">4-step setup wizard</text>
+    </g>
+    <g transform="translate(506 292)">
+      <rect x="0" y="0" width="168" height="38" rx="19" fill="#141416" stroke="#ffffff" stroke-opacity="0.10"/>
+      <circle cx="24" cy="19" r="4" fill="#8B5CF6"/>
+      <text x="40" y="25">7 languages</text>
+    </g>
+    <g transform="translate(690 292)">
+      <rect x="0" y="0" width="228" height="38" rx="19" fill="#141416" stroke="#ffffff" stroke-opacity="0.10"/>
+      <circle cx="24" cy="19" r="4" fill="#34D399"/>
+      <text x="40" y="25">enterprise-grade security</text>
+    </g>
+  </g>
+
+  <!-- stack line -->
+  <text x="294" y="360" font-family="'Geist','Inter','Segoe UI',system-ui,sans-serif" font-size="15" font-weight="400" letter-spacing="1.5" fill="#ffffff" fill-opacity="0.36">NEXT.JS 15  ·  TYPESCRIPT  ·  PRISMA  ·  MYSQL 8  ·  TAILWIND  ·  FRAMER MOTION</text>
+</svg>

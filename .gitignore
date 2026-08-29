@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+*.tsbuildinfo
+.next/dev-localstorage
+
+# env（env.example 保留，.env 含密钥绝不入库）
+.env
+.env.local
+.env.production
+
+# 运行时产物：备份快照与上传文件（仅根目录 data/）
+/data/
+public/uploads/*
+!public/uploads/.gitkeep
+
+# SQLite 单文件库（首次部署由安装向导/迁移生成）
+prisma/data/*
+!prisma/data/.gitkeep
+*.db
+*.db-wal
+*.db-shm
+
+# 本地日志与临时产物
+*.log
+e2e-artifacts/
+
+# misc
+.DS_Store
+Thumbs.db

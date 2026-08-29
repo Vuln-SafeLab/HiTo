@@ -1,0 +1,304 @@
+// NavSite — Prisma Schema (SQLite 单文件，单容器开箱即用)
+// 约束速记：
+// - SQLite 无原生枚举：全部改为 String 字段，取值由应用层
+//   src/lib/app-enums.ts 的常量联合类型约束（写入路径均过 zod 白名单）
+// - SQLite 无 native type：String 长度限制由应用层 zod max() 保证
+// - 单文件库 + WAL 模式（见 src/lib/db.ts 启动 PRAGMA），并发读写走 connection_limit=1
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────── 系统与安装状态 ───────────────────────
+
+/// 键值化系统配置：installed 标志、站点名、Logo、SEO 默认值、公告条、维护模式等
+/// 用 key-value 而非宽表：站点设置项会持续增加，避免每加一项就跑一次迁移
+model SystemConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("system_config")
+}
+
+// ─────────────────────── 用户 / 会话 / 审计 ───────────────────────
+
+model User {
+  id           String     @id @default(cuid())
+  username     String     @unique
+  email        String     @unique
+  passwordHash String
+  role         String     @default("EDITOR")
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  sessions  Session[]
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+/// 刷新令牌会话：只存哈希（tokenHash），泄库不等于泄令牌；
+/// revokedAt 支持安全中心「强制下线」
+model Session {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ip         String
+  userAgent  String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// 审计日志：username 冗余快照，用户被删后日志仍可读（userId SetNull 保留行）
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  username   String
+  action     String
+  targetType String
+  targetId   String?
+  detail     String?
+  ip         String
+  userAgent  String
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([action])
+  @@index([targetType])
+  @@map("audit_logs")
+}
+
+model IpBan {
+  id        String    @id @default(cuid())
+  ip        String    @unique
+  reason    String?
+  createdBy String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+
+  @@index([expiresAt])
+  @@map("ip_bans")
+}
+
+/// 限流桶：RATE_LIMIT_DRIVER=db 时多实例共享计数。
+/// 只由 DatabaseRateLimiter 经原子 UPSERT 读写，Prisma 层不建查询；
+/// 过期桶由概率性清理任务删除。
+model RateLimitBucket {
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime
+
+  @@map("rate_limit_buckets")
+}
+
+/// 登录失败锁定：identifierHash = 规范化标识符的 SHA-256。
+/// SQLite 单写者 + 事务串行化保证「读-改-写」不被并发爆破覆盖。
+model LoginLockout {
+  identifierHash String    @id
+  fails          Int       @default(0)
+  lockedUntil    DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  @@map("login_lockouts")
+}
+
+/// 鲲引擎攻击事件（edge→node 上报聚合落库）。
+/// eventId 与拦截页展示的短 ID 一致；同 ruleId+ip 同秒聚合成一行 count>1。
+/// sample 仅存截断脱敏片段，完整报文不留存。
+model WafEvent {
+  id             Int        @id @default(autoincrement())
+  eventId        String
+  at             DateTime   @default(now())
+  ruleId         String
+  action         String
+  ip             String
+  path           String
+  method         String
+  ua             String
+  sample         String?
+  count          Int        @default(1)
+  acknowledgedAt DateTime?
+
+  @@index([at])
+  @@index([ruleId, at])
+  @@index([acknowledgedAt])
+  @@map("waf_events")
+}
+
+// ─────────────────────── 内容：分类 / 卡片 / 标签 ───────────────────────
+
+model Category {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  icon        String // lucide 图标名，前端白名单映射，不做动态 import
+  description String?
+  order       Int       @default(0)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  cards Card[]
+
+  @@index([order])
+  @@index([deletedAt])
+  @@map("categories")
+}
+
+model Card {
+  id            String    @id @default(cuid())
+  title         String
+  url           String
+  description   String?
+  favicon       String?
+  image         String?
+  categoryId    String
+  category      Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  order         Int       @default(0)
+  status        String    @default("DRAFT")
+  featured      Boolean   @default(false)
+  /// 冗余计数：前台热门排序直接用它，避免每次聚合 click_events
+  clickCount    Int       @default(0)
+  linkStatus    String    @default("UNKNOWN")
+  lastCheckedAt DateTime?
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tags   CardTag[]
+  clicks ClickEvent[]
+
+  @@index([categoryId, status, deletedAt])
+  @@index([order])
+  @@index([clickCount])
+  @@index([deletedAt])
+  // 命令面板全局搜索用
+  @@index([title])
+  @@map("cards")
+}
+
+model Tag {
+  id   String @id @default(cuid())
+  name String @unique
+
+  cards CardTag[]
+
+  @@map("tags")
+}
+
+model CardTag {
+  cardId String
+  tagId  String
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, tagId])
+  @@index([tagId])
+  @@map("card_tags")
+}
+
+/// 明细事件只服务于「近 30 天趋势」，ipHash 为加盐 SHA-256（不存原始 IP，够去重即可）
+model ClickEvent {
+  id        Int      @id @default(autoincrement())
+  cardId    String
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  ipHash    String?
+  createdAt DateTime @default(now())
+
+  @@index([cardId, createdAt])
+  @@index([createdAt])
+  @@map("click_events")
+}
+
+// ─────────────────────── 公告 ───────────────────────
+
+/// 公告横幅：前台只展示「当前时间生效且 priority 最高」的一条；
+/// startAt/endAt 可空实现定时上下线，isActive 是总开关
+model Announcement {
+  id            String    @id @default(cuid())
+  content       String
+  linkUrl       String?
+  linkText      String?
+  type          String    @default("INFO")
+  startAt       DateTime?
+  endAt         DateTime?
+  isActive      Boolean   @default(true)
+  isDismissible Boolean   @default(true)
+  priority      Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([isActive, priority])
+  @@map("announcements")
+}
+
+// ─────────────────────── 备份 ───────────────────────
+
+/// 快照文件落在 data/backups/（不在 public 下，不可被 HTTP 直读），此表只存元数据
+model BackupSnapshot {
+  id        String   @id @default(cuid())
+  filename  String   @unique
+  sizeBytes Int
+  itemCount Int
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@map("backup_snapshots")
+}
+
+// ─────────────────────── 广告模块 ───────────────────────
+
+model Advertisement {
+  id        String    @id @default(cuid())
+  provider  String
+  alias     String
+  position  String
+  type      String
+  code      String
+  isActive  Boolean   @default(false)
+  weight    Int       @default(0)
+  device    String    @default("ALL")
+  startAt   DateTime?
+  endAt     DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([position, isActive])
+  @@index([weight])
+  @@map("ads")
+}
+
+/// 广告商站点所有权验证配置：一个广告商一套（provider 唯一）
+model AdVerification {
+  id          String   @id @default(cuid())
+  provider    String   @unique
+  metaName    String?
+  metaContent String?
+  fileName    String?
+  fileContent String?
+  dnsType     String?
+  dnsHost     String?
+  dnsValue    String?
+  dnsNote     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("ad_verifications")
+}
