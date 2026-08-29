@@ -12,7 +12,11 @@ const INTERNAL_ORIGIN = process.env.INTERNAL_ORIGIN ?? "http://127.0.0.1:3000";
 async function checkInstalled(): Promise<boolean> {
   if (installedLatch) return true;
   try {
-    const response = await fetch(`${INTERNAL_ORIGIN}/api/setup/status`, { cache: "no-store" });
+    const response = await fetch(`${INTERNAL_ORIGIN}/api/setup/status`, {
+      cache: "no-store",
+      // self-check must never wedge the middleware (fresh DB / slow disk)
+      signal: AbortSignal.timeout(2500),
+    });
     if (!response.ok) return false;
     const data: unknown = await response.json();
     const installed =
@@ -35,11 +39,13 @@ function applySecurityHeaders(response: NextResponse, csp: string | null): NextR
 }
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {
+  console.log("[mw] enter", request.nextUrl.pathname);
   const kunVerdict = await inspectRequest(request);
   if (kunVerdict.action === "block" || kunVerdict.action === "challenge") {
     return kunResponse(kunVerdict);
   }
 
+  console.log("[mw] verdict", kunVerdict.action, request.nextUrl.pathname);
   const { pathname } = request.nextUrl;
 
   const isProduction = process.env.NODE_ENV === "production";
@@ -52,7 +58,9 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     requestHeaders.set("content-security-policy", csp);
   }
 
+  console.log("[mw] before checkInstalled", request.nextUrl.pathname);
   const installed = await checkInstalled();
+  console.log("[mw] after checkInstalled", installed, request.nextUrl.pathname);
   const isSetupPath = pathname === "/setup" || pathname.startsWith("/setup/");
 
   if (!installed && !isSetupPath) {
@@ -91,8 +99,10 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  // Never blanket-allow dotted paths; only explicit static/infra paths excluded
+  // Never blanket-allow dotted paths; only explicit static/infra paths excluded.
+  // api/internal MUST stay excluded: the edge engine's HMAC self-fetch re-enters the
+  // middleware otherwise, and the in-flight config pull deadlocks every gated route.
   matcher: [
-    "/((?!_next/static|_next/image|favicon\\.ico|uploads|api/setup|api/health|robots\\.txt|sitemap\\.xml).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|uploads|api/setup|api/health|api/internal|robots\\.txt|sitemap\\.xml).*)",
   ],
 };

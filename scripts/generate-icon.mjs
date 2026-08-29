@@ -1,80 +1,120 @@
-// HiTo 品牌图标光栅化：解析式 AA，零依赖。设计坐标 1024（与 SVG 一致），输出 7 个尺寸 + icon-data.ts。
+// HiTo brand icon rasterizer — correct signed-distance fields, zero deps.
+// Renders: site compass (16→2048) + Kun engine shield (512) + icon-data.ts
+// Design space: 1024×1024. Run: node scripts/generate-icon.mjs
 import { deflateSync } from "node:zlib";
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const ROOT = path.resolve(process.cwd());
 const OUT_DIR = path.join(ROOT, "public", "icons");
 const APP_DIR = path.join(ROOT, "src", "app");
 const ENGINE_DIR = path.join(ROOT, "src", "lib", "security", "engine");
 
-const COL_DISK = [0x1b, 0x24, 0x38];
-const COL_LINE = [0xf1, 0xf5, 0xfb];
-const COL_NODE = [0x34, 0xd3, 0xee];
-const COL_RING = [0xb1, 0x8c, 0xff];
+// ── palette ──
+const INK = [0x0b, 0x0f, 0x1c];        // deep navy (icon bg / cutouts)
+const WHITE = [0xf1, 0xf5, 0xfb];      // needle north
+const CYAN = [0x22, 0xd3, 0xee];       // brand accent-to
+const VIOLET = [0xa7, 0x8b, 0xfa];     // brand accent-from (soft)
+const CYAN_DIM = [0x0e, 0x7d, 0x94];   // needle south (engine)
+const CYAN_SHIELD = [0x22, 0xd3, 0xee];
 
 function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
 function smoothstep(e0, e1, x) { const t = clamp01((x - e0) / (e1 - e0)); return t * t * (3 - 2 * t); }
-function edge(a, b, x, y) { return (b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]); }
+// 1 inside (sd ≤ 0), feathered to 0 across `feather` px outside
+function fill(sd, feather) { return smoothstep(0, feather, -sd); }
+const hypot = (x, y) => Math.sqrt(x * x + y * y);
 
-function layerDisk(rd, r, cx, cy, color) {
-  return { color, draw(x, y) { const dx = x - cx, dy = y - cy; const d = Math.sqrt(dx * dx + dy * dy); return smoothstep(r - rd, r, rd - d); } };
+// signed-distance layers (sd < 0 inside)
+function layerDisk(r, cx, cy, color) {
+  return { color, sd(x, y) { return hypot(x - cx, y - cy) - r; } };
 }
-function layerRing(ro, ri, cx, cy, color) {
-  return { color, draw(x, y) { const dx = x - cx, dy = y - cy; const d = Math.sqrt(dx * dx + dy * dy); return clamp01(smoothstep(ri - ro, ri, ro - d) - smoothstep(0, ro, ri - d)); } };
+function layerRing(rMid, halfW, cx, cy, color) {
+  return { color, sd(x, y) { return Math.abs(hypot(x - cx, y - cy) - rMid) - halfW; } };
 }
-function layerSegment(x1, y1, x2, y2, w, color) {
-  const dx = x2 - x1, dy = y2 - y1, len = Math.sqrt(dx * dx + dy * dy);
-  const ux = dx / len, uy = dy / len, nx = -uy, ny = ux, hw = w / 2;
-  return { color, draw(x, y) { const vx = x - x1, vy = y - y1; const t = vx * ux + vy * uy; if (t < 0 || t > len) return 0; const d = Math.abs(vx * nx + vy * ny); return smoothstep(hw, hw - 1, d); } };
-}
-function layerTriangle(p1, p2, p3, color) {
+function layerSegment(x1, y1, x2, y2, halfW, color) {
   return {
     color,
-    draw(x, y) {
-      const d1 = edge(p1, p2, x, y), d2 = edge(p2, p3, x, y), d3 = edge(p3, p1, x, y);
-      const hasNeg = d1 < 0 || d2 < 0 || d3 < 0;
-      const hasPos = d1 > 0 || d2 > 0 || d3 > 0;
-      if (hasNeg && hasPos) return 0;
-      const d = Math.min(Math.abs(d1), Math.abs(d2), Math.abs(d3));
-      return smoothstep(1.2, 0, d);
-    }
+    sd(x, y) {
+      const dx = x2 - x1, dy = y2 - y1;
+      const len2 = dx * dx + dy * dy || 1;
+      const t = clamp01(((x - x1) * dx + (y - y1) * dy) / len2);
+      return hypot(x - (x1 + t * dx), y - (y1 + t * dy)) - halfW;
+    },
   };
 }
-
-function makeLayers(s) {
-  return [
-    layerDisk(0.5, 480 * s, 512 * s, 500 * s, COL_DISK),
-    layerDisk(0.5, 104 * s, 368 * s, 668 * s, COL_NODE),
-    layerRing((126 + 49) * s, (126 - 49) * s, 662 * s, 344 * s, COL_RING),
-    layerTriangle([470 * s, 372 * s], [594 * s, 348 * s], [556 * s, 466 * s], COL_LINE),
-    layerSegment(392 * s, 640 * s, 618 * s, 404 * s, 112, COL_LINE),
-  ];
+function layerTriangle(p1, p2, p3, color) {
+  const edge = (a, b) => (x, y) => (b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]);
+  const e1 = edge(p1, p2), e2 = edge(p2, p3), e3 = edge(p3, p1);
+  return {
+    color,
+    sd(x, y) {
+      const d1 = e1(x, y), d2 = e2(x, y), d3 = e3(x, y);
+      const hasNeg = d1 < 0 || d2 < 0 || d3 < 0;
+      const hasPos = d1 > 0 || d2 > 0 || d3 > 0;
+      const dmin = Math.min(Math.abs(d1), Math.abs(d2), Math.abs(d3));
+      return hasNeg && hasPos ? dmin : -dmin; // convex: sign tells inside
+    },
+  };
+}
+// clip: multiply alpha by a half-plane factor (for gradient-split rings)
+function withClip(layer, clipFn) {
+  return { color: layer.color, sd: layer.sd, clip: clipFn };
 }
 
-function rasterize(S) {
+function composite(layers, S) {
   const out = new Uint8ClampedArray(S * S * 4);
-  const layers = makeLayers(S / 1024);
-  for (let y = 0; y < S; y++) {
-    for (let x = 0; x < S; x++) {
+  for (let py = 0; py < S; py++) {
+    for (let px = 0; px < S; px++) {
+      const x = (px + 0.5) * (1024 / S), y = (py + 0.5) * (1024 / S);
+      // painter's algorithm: later layers sit ON TOP
       let r = 0, g = 0, b = 0, a = 0;
       for (const layer of layers) {
-        const alpha = layer.draw(x + 0.5, y + 0.5);
+        let alpha = fill(layer.sd(x, y), Math.max(1.1, 1.4 * (1024 / S)));
+        if (layer.clip) alpha *= layer.clip(x, y);
         if (alpha <= 0) continue;
-        const ia = 1 - a;
-        r = layer.color[0] * alpha * ia + r;
-        g = layer.color[1] * alpha * ia + g;
-        b = layer.color[2] * alpha * ia + b;
-        a = alpha * ia + a;
-        if (a > 0.999) break;
+        r = layer.color[0] * alpha + r * (1 - alpha);
+        g = layer.color[1] * alpha + g * (1 - alpha);
+        b = layer.color[2] * alpha + b * (1 - alpha);
+        a = alpha + a * (1 - alpha);
       }
-      const i = (y * S + x) * 4;
+      const i = (py * S + px) * 4;
       out[i] = r; out[i + 1] = g; out[i + 2] = b; out[i + 3] = a * 255;
     }
   }
   return out;
 }
 
+// ── site mark: dark compass — needle + violet/cyan ring + node ──
+function siteLayers() {
+  const diagonalSplit = (x, y) => smoothstep(-60, 60, y - x); // 1 below diagonal → cyan side
+  return [
+    layerDisk(470, 512, 512, INK),
+    // outer brand ring: violet (upper-left of diagonal) / cyan (lower-right)
+    withClip(layerRing(444, 26, 512, 512, VIOLET), (x, y) => 1 - diagonalSplit(x, y)),
+    withClip(layerRing(444, 26, 512, 512, CYAN), (x, y) => diagonalSplit(x, y)),
+    // needle: white north, cyan south
+    layerTriangle([512, 176], [596, 512], [428, 512], WHITE),
+    layerTriangle([428, 512], [596, 512], [512, 848], CYAN),
+    // hub
+    layerDisk(30, 512, 512, WHITE),
+  ];
+}
+
+// ── engine mark: Kun shield — cyan shield, ink panel, needle, node ──
+function kunLayers() {
+  return [
+    layerDisk(350, 512, 400, CYAN_SHIELD),
+    layerTriangle([212, 392], [812, 392], [512, 880], CYAN_SHIELD),
+    layerDisk(286, 512, 408, INK),
+    layerTriangle([288, 408], [736, 408], [512, 760], INK),
+    layerTriangle([512, 240], [586, 434], [438, 434], WHITE),
+    layerTriangle([438, 434], [586, 434], [512, 646], CYAN_DIM),
+    layerDisk(34, 512, 434, WHITE),
+  ];
+}
+
+// ── PNG encoder ──
 const CRC = (() => {
   const t = new Int32Array(256);
   for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c; }
@@ -102,29 +142,32 @@ function encodePng(rgba, S) {
   return Buffer.concat([sig, chunk("IHDR", ihdr), chunk("IDAT", idat), chunk("IEND", Buffer.alloc(0))]);
 }
 
-fs.mkdirSync(OUT_DIR, { recursive: true });
-fs.mkdirSync(APP_DIR, { recursive: true });
-fs.mkdirSync(ENGINE_DIR, { recursive: true });
+// ── main ──
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+export function renderSite(S) { return composite(siteLayers(), S); }
+export function renderKun(S) { return composite(kunLayers(), S); }
+export { encodePng };
 
-const SIZES = [16, 32, 180, 192, 512, 1024, 2048];
-let icon32B64 = "";
-for (const size of SIZES) {
-  const rgba = rasterize(size);
-  const png = encodePng(Uint8Array.from(rgba), size);
-  fs.writeFileSync(path.join(OUT_DIR, `hito-${size}.png`), png);
-  if (size === 512) fs.writeFileSync(path.join(APP_DIR, "icon.png"), png);
-  if (size === 180) fs.writeFileSync(path.join(APP_DIR, "apple-icon.png"), png);
-  if (size === 32) icon32B64 = png.toString("base64");
-  console.log(`hito-${size}.png  ${png.length} bytes`);
+if (isMain) {
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+  fs.mkdirSync(APP_DIR, { recursive: true });
+
+  for (const size of [16, 32, 180, 192, 512, 1024, 2048]) {
+    const png = encodePng(renderSite(size), size);
+    fs.writeFileSync(path.join(OUT_DIR, `hito-${size}.png`), png);
+    if (size === 512) fs.writeFileSync(path.join(APP_DIR, "icon.png"), png);
+    if (size === 180) fs.writeFileSync(path.join(APP_DIR, "apple-icon.png"), png);
+    console.log(`hito-${size}.png  ${png.length} bytes`);
+  }
+
+  const kunPng = encodePng(renderKun(512), 512);
+  const kun512B64 = kunPng.toString("base64");
+  fs.writeFileSync(path.join(OUT_DIR, "kun-512.png"), kunPng);
+  console.log(`kun-512.png  ${kunPng.length} bytes (b64 ${kun512B64.length})`);
+
+  fs.writeFileSync(
+    path.join(ENGINE_DIR, "icon-data.ts"),
+    `// AUTO-GENERATED by scripts/generate-icon.mjs — do not edit\nexport const KUN_ICON_512_BASE64 = "${kun512B64}";\n`
+  );
+  console.log("icon-data.ts refreshed (Kun shield @512)");
 }
-
-const icon512 = fs.statSync(path.join(OUT_DIR, "hito-512.png")).size;
-const apple180 = fs.statSync(path.join(OUT_DIR, "hito-180.png")).size;
-const icon16 = fs.statSync(path.join(OUT_DIR, "hito-16.png")).size;
-console.log(`budget: icon.png(512)=${icon512}B (≤150KB ${icon512 <= 150 * 1024 ? "PASS" : "FAIL"}), apple.png(180)=${apple180}B (≤60KB ${apple180 <= 60 * 1024 ? "PASS" : "FAIL"}), favicon(16)=${icon16}B`);
-
-fs.writeFileSync(
-  path.join(ENGINE_DIR, "icon-data.ts"),
-  `// AUTO-GENERATED by scripts/generate-icon.mjs — do not edit\nexport const KUN_ICON_32_BASE64 = "${icon32B64}";\n`
-);
-console.log("icon-data.ts refreshed");

@@ -532,6 +532,13 @@ New user-facing copy must be added to **all 7** `messages/*.json` files with ide
 
 ## 📝 Changelog
 
+### 2026-08-29 · Icon overhaul + middleware deadlock fix
+
+- **Fixed — the app icons were broken since day one.** The SDF rasterizer's compositing was inverted (first opaque layer won, hiding everything painted after), so the "compass" favicon was actually a purple ring blob + a white rectangle. Rewritten with proper signed-distance fields and painter's-order compositing: the compass (ink disk + violet/cyan split ring + white/cyan needle + hub) now renders correctly at every size, regenerated up to **2048 px**.
+- **Added — a dedicated Kun engine mark**: cyan shield + ink panel + white/cyan needle + hub node, rasterized at 512 px and inlined into the 403/429/challenge pages (displayed ≤84 px CSS → ≥6× density, crisp on 2K/4K screens; replaces the 32 px icon that was being stretched).
+- **Fixed — every middleware-gated route could hang forever.** The edge engine's config self-fetch targeted `/api/internal/waf/*`, which was NOT excluded from the middleware — the nested request re-entered the middleware and awaited its own in-flight config pull. The matcher now excludes `api/internal` (it is HMAC-protected and needs no gating), and every engine/middleware self-fetch is time-boxed with `AbortSignal.timeout`.
+- Verified: fresh-DB boot no longer wedges; excluded routes stay live while gated routes respond normally (302/401/200 as appropriate).
+
 ### 2026-08-29 · Statistics that never rendered + README media
 
 - **Fixed — WAF console statistics were empty on every SQLite deployment.** Prisma stores SQLite datetimes as integer milliseconds, but the raw SQL compared them against `datetime('now', …)` text (INTEGER < TEXT always → 0 rows) and grouped with `strftime` on raw ms. The 7-day trend, 24h distribution, Top-IPs and today-total now use unixepoch-integer windows and `strftime(..., at/1000, 'unixepoch', 'localtime')` day keys. Same fix applied to the dashboard 30-day click trend.

@@ -1,4 +1,4 @@
-import { LRUCache } from "lru-cache";
+﻿import { LRUCache } from "lru-cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { ENGINE_DEFAULTS, RULE_IDS, type EngineMode } from "./rules";
 import { scanPayload, scanProbePath, scanStructure, decodeOnce, type ScanInput } from "./scanner";
@@ -11,7 +11,7 @@ import {
   verifyToken,
 } from "./challenge";
 import { render403, render429, renderChallenge } from "./page";
-import { KUN_ICON_32_BASE64 } from "./icon-data";
+import { KUN_ICON_512_BASE64 } from "./icon-data";
 import { buildInternalRequest, isInternalSignedRequest } from "./internal-client";
 
 function envNum(name: string, fallback: number): number {
@@ -44,7 +44,7 @@ const POW_PREFIX = ENGINE_DEFAULTS.POW_PREFIX;
 
 if (process.env.NODE_ENV === "production" && !TRUST_PROXY) {
   console.warn(
-    "[kun] TRUST_PROXY=false — IP-level ban/score disabled; content-only mode. " +
+    "[kun] TRUST_PROXY=false 鈥?IP-level ban/score disabled; content-only mode. " +
       "Put behind a reverse proxy in production and set TRUST_PROXY=true."
   );
 }
@@ -126,7 +126,9 @@ async function refreshRuntimeConfig(): Promise<void> {
   try {
     const built = await buildInternalRequest("/api/internal/waf/config", "");
     if (built === null) return;
-    const res = await fetch(built.url, built.init).catch(() => null);
+    // Self-fetch must be time-boxed: a wedged loopback request would hang
+    // ensureFreshConfig and with it every middleware-gated route.
+    const res = await fetch(built.url, { ...built.init, signal: AbortSignal.timeout(3000) }).catch(() => null);
     if (res === null || !res.ok) return;
     const data: unknown = await res.json().catch(() => null);
     if (
@@ -176,7 +178,7 @@ function fireReport(event: {
       const body = JSON.stringify({ events: [event] });
       const built = await buildInternalRequest("/api/internal/waf/report", body);
       if (built === null) return;
-      await fetch(built.url, built.init).catch(() => undefined);
+      await fetch(built.url, { ...built.init, signal: AbortSignal.timeout(3000) }).catch(() => undefined);
     } catch { /* observation channel must never affect main flow */ }
   })();
 }
@@ -199,7 +201,7 @@ async function pushBansAndTelemetry(): Promise<void> {
     const telemetry = { qps: state.qpsBuckets[state.qpsBuckets.length - 1]?.count ?? 0, at: now, topRules };
     const body = JSON.stringify({ bans, telemetry });
   const built = await buildInternalRequest("/api/internal/waf/bans", body);
-    if (built !== null) await fetch(built.url, built.init).catch(() => undefined);
+    if (built !== null) await fetch(built.url, { ...built.init, signal: AbortSignal.timeout(3000) }).catch(() => undefined);
   } catch { /* silent */ }
 }
 
@@ -252,7 +254,7 @@ function checkGlobalQps(): boolean {
   const currentQps = last?.count ?? 0;
   if (currentQps > runtime.underAttackQps) {
     state.qpsTriggeredUntil = Date.now() + 120_000;
-    console.error(`[kun] QPS ${currentQps} > ${runtime.underAttackQps} — entering under-attack mode 120s`);
+    console.error(`[kun] QPS ${currentQps} > ${runtime.underAttackQps} 鈥?entering under-attack mode 120s`);
     return true;
   }
   return false;
@@ -301,7 +303,7 @@ export async function inspectRequest(request: NextRequest): Promise<KunVerdict> 
   try {
     if (MODE === "off") return { action: "allow" };
     // No signing secret (not yet installed / broken env): PoW tokens would be forgeable
-    // with an empty HMAC key — disable challenge mode entirely (fail-open).
+    // with an empty HMAC key 鈥?disable challenge mode entirely (fail-open).
     if ((process.env.AUTH_SECRET ?? "").trim() === "") return { action: "allow" };
     if (await isInternalSignedRequest(request)) return { action: "allow" };
     await ensureFreshConfig();
@@ -451,7 +453,7 @@ type KunVerdict = KunAction;
 
 export function kunResponse(verdict: KunVerdict): NextResponse {
   const base = {
-    iconBase64: KUN_ICON_32_BASE64,
+    iconBase64: KUN_ICON_512_BASE64,
     eventId: "evt-" + (("eventId" in verdict ? verdict.eventId : "") || newEventId()),
   };
   if (verdict.action === "challenge") {
