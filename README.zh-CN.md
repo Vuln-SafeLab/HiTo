@@ -3,11 +3,12 @@
 </p>
 
 <p align="center">
-  <a href="#"><img alt="build" src="https://img.shields.io/badge/build-passing-34D399?style=flat-square" /></a>
-  <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-8B5CF6?style=flat-square" /></a>
-  <a href="./package.json"><img alt="version" src="https://img.shields.io/badge/version-0.1.0-22D3EE?style=flat-square" /></a>
+  <a href="https://github.com/Vuln-SafeLab/HiTo/releases"><img alt="release" src="https://img.shields.io/github/v/release/Vuln-SafeLab/HiTo?style=flat-square&color=22D3EE" /></a>
+  <a href="https://hub.docker.com/r/vulnlab0/hito"><img alt="docker pulls" src="https://img.shields.io/docker/pulls/vulnlab0/hito?style=flat-square&label=docker%20pulls&color=2496ED" /></a>
+  <a href="https://github.com/Vuln-SafeLab/HiTo/stargazers"><img alt="stars" src="https://img.shields.io/github/stars/Vuln-SafeLab/HiTo?style=flat-square&color=F59E0B" /></a>
+  <a href="./LICENSE"><img alt="license" src="https://img.shields.io/github/license/Vuln-SafeLab/HiTo?style=flat-square&color=8B5CF6" /></a>
   <a href="#十四参与贡献"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" /></a>
-  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-15.3-black?style=flat-square" />
+  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-15.5-black?style=flat-square" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square" />
   <img alt="WAF" src="https://img.shields.io/badge/Kun%20WAF-1.0%20·%20PoW%20·%20Attack%20Map-EF4444?style=flat-square" />
 </p>
@@ -24,6 +25,17 @@
 </p>
 
 > **HiTo** 是一个自托管的工具/资源导航站：精致的公开前台 + 完整的后台管理 + 首次部署安装向导 + **一个真正跑在边缘中间件里的 WAF 和实时全球攻击地图**。**克隆仓库后无需改任何一行代码即可上线** —— SQLite 内置于应用，没有数据库服务器要装：首访自动进入四步向导，建一个管理员，站点即可用。可以理解为「自托管、数据自己掌控」版的 Linktree / 起始页导航站 —— 别的项目在 README 里承诺的安全能力，HiTo 直接跑在 `middleware.ts` 里。
+
+## ⚡ 一键部署
+
+```bash
+docker run -d --name hito -p 3000:3000 \
+  -v hito-data:/app/data -v hito-uploads:/app/public/uploads \
+  vulnlab0/hito:latest
+# 打开 http://localhost:3000/setup 走完四步向导即可上线
+```
+
+偏好完整编排（含 nginx 边缘与健康检查）？`git clone` 后执行 `docker compose -f docker-compose.prod.yml up -d`，详见[生产部署](#75-生产部署)。
 
 ---
 

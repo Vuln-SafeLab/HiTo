@@ -3,11 +3,12 @@
 </p>
 
 <p align="center">
-  <a href="#"><img alt="build" src="https://img.shields.io/badge/build-passing-34D399?style=flat-square" /></a>
-  <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-8B5CF6?style=flat-square" /></a>
-  <a href="./package.json"><img alt="version" src="https://img.shields.io/badge/version-0.1.0-22D3EE?style=flat-square" /></a>
+  <a href="https://github.com/Vuln-SafeLab/HiTo/releases"><img alt="release" src="https://img.shields.io/github/v/release/Vuln-SafeLab/HiTo?style=flat-square&color=22D3EE" /></a>
+  <a href="https://hub.docker.com/r/vulnlab0/hito"><img alt="docker pulls" src="https://img.shields.io/docker/pulls/vulnlab0/hito?style=flat-square&label=docker%20pulls&color=2496ED" /></a>
+  <a href="https://github.com/Vuln-SafeLab/HiTo/stargazers"><img alt="stars" src="https://img.shields.io/github/stars/Vuln-SafeLab/HiTo?style=flat-square&color=F59E0B" /></a>
+  <a href="./LICENSE"><img alt="license" src="https://img.shields.io/github/license/Vuln-SafeLab/HiTo?style=flat-square&color=8B5CF6" /></a>
   <a href="#14-contributing"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" /></a>
-  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-15.3-black?style=flat-square" />
+  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-15.5-black?style=flat-square" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square" />
   <img alt="WAF" src="https://img.shields.io/badge/Kun%20WAF-1.0%20%C2%B7%20PoW%20%C2%B7%20Attack%20Map-EF4444?style=flat-square" />
 </p>
@@ -24,6 +25,17 @@
 </p>
 
 > **HiTo** is a self-hosted tool & resource directory: a polished public front-end + a full admin back-office + a first-run install wizard + **a real edge WAF with a live global attack map**. **A fresh clone goes live without editing a single line of code** — SQLite is built in, so there is no database server to install: the first visit lands on a four-step wizard, you create an admin, and you're live. Think a self-hosted, data-you-own alternative to Linktree / start-page directories — with the security engine most projects promise in a README actually running in `middleware.ts`.
+
+## ⚡ One-command deploy
+
+```bash
+docker run -d --name hito -p 3000:3000 \
+  -v hito-data:/app/data -v hito-uploads:/app/public/uploads \
+  vulnlab0/hito:latest
+# open http://localhost:3000/setup and finish the four-step wizard
+```
+
+Prefer full orchestration (nginx edge + health checks)? `git clone` then `docker compose -f docker-compose.prod.yml up -d` — see [production deployment](#75-production-deployment).
 
 ---
 
