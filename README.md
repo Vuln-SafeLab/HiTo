@@ -16,6 +16,7 @@
 
 <p align="center">
   <b>English</b> · <a href="./README.zh-CN.md">简体中文</a>
+  &nbsp;·&nbsp; 🌐 <a href="https://apt.cab"><b>Live demo</b></a>
 </p>
 
 <p align="center">
@@ -456,9 +457,9 @@ pnpm exec prisma migrate resolve --applied 20260826070000_add_waf_events
 <details>
 <summary><b>11. Behind nginx, redirects go to <code>localhost:3000</code> / <code>127.0.0.1:3000</code></b></summary>
 
-**Symptom:** with the site behind a reverse proxy, the browser is sent to `Location: http://127.0.0.1:3000/setup`.
-**Root cause:** self-hosted Next.js builds `request.url` from the request's `Host` header, and nginx defaults `proxy_set_header Host $proxy_host` (the upstream address) instead of forwarding the original domain.
-**Fix (either; first recommended):**
+**Symptom:** with the site behind a reverse proxy, the browser is sent to `Location: http://127.0.0.1:3000/setup`; or **admin pages open but every save/create/delete button fails** (Server Action Origin/Host validation broken by wrong proxy headers).
+**Root cause:** self-hosted Next.js builds `request.url` from the request's `Host` header and validates Server Action origins with it, while nginx defaults `proxy_set_header Host $proxy_host` (the upstream address) instead of forwarding the original domain.
+**Fix (built-in since v2.7):** set `NEXT_PUBLIC_APP_URL=https://your-domain` in `.env` — middleware detects wrong proxy headers and re-anchors the request identity to that origin, restoring Server Actions, redirects and cookies. Standard header forwarding is still recommended:
 ```nginx
 # let the backend see the real domain (panel templates usually have the first two lines; add the third)
 proxy_set_header Host $host;
@@ -576,6 +577,15 @@ New user-facing copy must be added to **all 7** `messages/*.json` files with ide
 ---
 
 ## 📝 Changelog
+
+### 2026-08-30 · v2.7 reverse-proxy self-healing + deployment robustness (verified by matrix tests)
+
+- **Fixed — behind a reverse proxy the entire back-office "renders but nothing works".** nginx defaults `proxy_set_header Host` to the upstream address, and Next.js Server Actions (every admin save/create/delete) validate Origin against the request Host — pages render fine while every write silently 403s. Two-layer self-healing: ① all in-app Origin checks are now proxy-aware (prefer `X-Forwarded-Host`); ② once `NEXT_PUBLIC_APP_URL` is configured, middleware re-anchors the request identity to that public origin when proxy headers are wrong. Five-scenario matrix verified: direct 200 / attacker origin 403 (CSRF intact) / broken proxy + pinned origin 200 / correct XFH 200 / no session 401.
+- **Fixed — absolute redirects went to `localhost:3000` behind proxies.** The redirect base is now derived from `X-Forwarded-Host` → `Host` → `NEXT_PUBLIC_APP_URL` (was `request.url`).
+- **Fixed — "start the app first, migrate via the wizard" made every wizard API 500.** The rate limiter falls back to memory when `rate_limit_buckets` does not exist yet (P2021); real DB failures still fail closed.
+- **Fixed — intermittent `database is locked` during wizard migrations.** Auto-retried (3 × 2s) against the SQLite single-writer contention with the wizard's own requests.
+- **Docs —** troubleshooting #4 expanded (runtime behavior), new #11 (proxy redirects + Server Actions).
+- 🌐 **Live demo is up: [https://apt.cab](https://apt.cab)**
 
 ### 2026-08-29 · Icon overhaul + middleware deadlock fix
 

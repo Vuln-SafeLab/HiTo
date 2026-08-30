@@ -12,28 +12,26 @@ export function isSameOrigin(request: NextRequest, method: string = "GET"): bool
     return method === "GET" || method === "HEAD";
   }
 
-  let originHost: string;
+  let originUrl: URL;
   try {
-    originHost = new URL(origin).origin;
+    originUrl = new URL(origin);
   } catch {
     return false;
   }
 
-  const host = request.headers.get("host");
-  if (host !== null && host.trim() !== "") {
-    const proto =
-      request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || "http";
-    if (
-      originHost === `${proto}://${host}` ||
-      originHost === `https://${host}` ||
-      originHost === `http://${host}`
-    ) {
-      return true;
-    }
+  // Proxy-aware: behind nginx the raw Host header can carry the upstream address
+  // (127.0.0.1:3000) while the public identity rides in x-forwarded-host — set by
+  // the proxy, or re-anchored by middleware from NEXT_PUBLIC_APP_URL.
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ?? "";
+  const host = forwardedHost !== "" ? forwardedHost : (request.headers.get("host")?.trim() ?? "");
+  if (host !== "") {
+    if (originUrl.host === host) return true;
+    const proto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || "http";
+    if (originUrl.origin === `${proto}://${host}`) return true;
   }
 
   try {
-    if (originHost === new URL(getEnv().NEXT_PUBLIC_APP_URL).origin) return true;
+    if (originUrl.origin === new URL(getEnv().NEXT_PUBLIC_APP_URL).origin) return true;
   } catch {
     // Malformed NEXT_PUBLIC_APP_URL is left to env validation to surface
   }

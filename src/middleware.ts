@@ -74,6 +74,30 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const isProduction = process.env.NODE_ENV === "production";
   let csp: string | null = null;
   const requestHeaders = new Headers(request.headers);
+
+  // Proxy-header re-anchoring: nginx defaults `proxy_set_header Host` to the upstream
+  // address, so the raw Host says 127.0.0.1:3000 while Origin says https://apt.cab —
+  // Next.js Server Actions then reject EVERY admin write on an Origin/host mismatch
+  // (pages still render, so the back-office "looks fine but nothing works"). Next's
+  // action handler reads x-forwarded-host first, but a misconfigured proxy sends none.
+  // When the operator pinned NEXT_PUBLIC_APP_URL and neither header matches it,
+  // re-anchor the request identity to that origin. CSRF stays intact: the client's
+  // Origin must still equal the pinned origin to pass the action host check.
+  const fwdHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ?? "";
+  const rawHost = request.headers.get("host")?.trim() ?? "";
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "";
+  let envHost = "";
+  if (envUrl !== "") {
+    try {
+      envHost = new URL(envUrl).host;
+    } catch {
+      envHost = "";
+    }
+  }
+  if (envHost !== "" && fwdHost !== envHost && rawHost !== envHost) {
+    requestHeaders.set("x-forwarded-host", envHost);
+  }
+
   if (isProduction) {
     const nonce = generateNonce();
     csp = buildCsp(nonce);

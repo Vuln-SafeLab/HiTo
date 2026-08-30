@@ -16,6 +16,7 @@
 
 <p align="center">
   <a href="./README.md">English</a> · <b>简体中文</b>
+  &nbsp;·&nbsp; 🌐 <a href="https://apt.cab"><b>在线演示</b></a>
 </p>
 
 <p align="center">
@@ -456,9 +457,9 @@ pnpm exec prisma migrate resolve --applied 20260826070000_add_waf_events
 <details>
 <summary><b>11. Nginx 反代后，重定向变成 <code>localhost:3000</code> 或 <code>127.0.0.1:3000</code></b></summary>
 
-**症状：** 站点经 nginx 反代后访问，浏览器被跳到 `Location: http://127.0.0.1:3000/setup`。
-**原因：** 自托管模式下 Next.js 用请求的 `Host` 头构造 `request.url`，而 nginx 默认 `proxy_set_header Host $proxy_host`（即上游地址），不透传原始域名。
-**解决（两选一，推荐前者）：**
+**症状：** 站点经 nginx 反代后访问，浏览器被跳到 `Location: http://127.0.0.1:3000/setup`；或**后台页面能打开，但所有"保存/创建/删除"按钮全部失败**（Server Action 的 Origin/Host 校验被坏代理头破坏）。
+**原因：** 自托管模式下 Next.js 用请求的 `Host` 头构造 `request.url` 并校验 Server Action 来源，而 nginx 默认 `proxy_set_header Host $proxy_host`（即上游地址），不透传原始域名。
+**解决（v2.7 起已内置自愈）：** 在 `.env` 设置 `NEXT_PUBLIC_APP_URL=https://你的域名` —— 中间件检测到代理头错误时自动把请求身份锚定到该域名，Server Action / 重定向 / Cookie 全部恢复正常。同时仍建议反代透传标准头：
 ```nginx
 # 让后端看到真实域名（宝塔等面板模板通常已含前两行，补上第三行即可）
 proxy_set_header Host $host;
@@ -576,6 +577,15 @@ pnpm lint        # 零警告
 ---
 
 ## 📝 更新日志
+
+### 2026-08-30 · v2.7 反向代理自愈 + 部署健壮性（实测修复）
+
+- **修复 —— 反代部署下整个后台"看得见点不动"。** nginx 默认把 `Host` 设为上游地址（`127.0.0.1:3000`），而 Next.js 的 Server Action（后台所有"保存/创建/删除"）会校验 Origin 与请求 Host 一致 —— 页面全部正常渲染，但每一次后台写操作都被静默 403。现支持两层自愈：① 全部源码内的 Origin 校验改为代理感知（优先 `X-Forwarded-Host`）；② 运维配置 `NEXT_PUBLIC_APP_URL` 后，中间件在代理头错误时把请求身份**重锚定**到该公网域名。五场景矩阵实测：直连 200 / 攻击者 Origin 403（CSRF 不降级）/ 坏代理+锚定 Origin 200 / 正确 XFH 200 / 无登录 401。
+- **修复 —— 反代下绝对重定向到 `localhost:3000`。** 重定向基座按 `X-Forwarded-Host` → `Host` → `NEXT_PUBLIC_APP_URL` 推导（此前用 `request.url`，反代下指向内部地址）。
+- **修复 —— "先启动应用、后跑向导"部署顺序下向导 API 全部 500。** 限流器在 `rate_limit_buckets` 表尚未建立（P2021）时自动降级内存限流；真 DB 故障仍 fail-closed。
+- **修复 —— 向导「执行迁移」间歇性 `database is locked`。** 迁移子进程与向导自身请求竞争 SQLite 写锁，现自动重试（3 次 × 2s）。
+- **文档 ——** 排错 #4 补全运行期行为；新增排错 #11（反代重定向 + Server Action 症状与修复）。
+- 🌐 **在线演示上线：[https://apt.cab](https://apt.cab)**
 
 ### 2026-08-29 · 图标重制 + 中间件死锁修复
 
