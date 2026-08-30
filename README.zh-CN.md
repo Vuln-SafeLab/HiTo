@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/Vuln-SafeLab/HiTo/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/Vuln-SafeLab/HiTo/ci.yml?style=flat-square&label=CI&branch=main" /></a>
   <a href="https://github.com/Vuln-SafeLab/HiTo/releases"><img alt="release" src="https://img.shields.io/github/v/release/Vuln-SafeLab/HiTo?style=flat-square&color=22D3EE" /></a>
   <a href="https://hub.docker.com/r/vulnlab0/hito"><img alt="docker pulls" src="https://img.shields.io/docker/pulls/vulnlab0/hito?style=flat-square&label=docker%20pulls&color=2496ED" /></a>
   <a href="https://github.com/Vuln-SafeLab/HiTo/stargazers"><img alt="stars" src="https://img.shields.io/github/stars/Vuln-SafeLab/HiTo?style=flat-square&color=F59E0B" /></a>
