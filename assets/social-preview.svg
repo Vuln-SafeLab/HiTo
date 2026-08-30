@@ -1,0 +1,68 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="HiTo">
+  <defs>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="38%" r="65%">
+      <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.24"/>
+      <stop offset="55%" stop-color="#22D3EE" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#0A0A0B" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.045" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0A0A0B" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#0A0A0B" stop-opacity="0.85"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="640" fill="#0A0A0B"/>
+  <rect width="1280" height="640" fill="url(#grid)"/>
+  <rect width="1280" height="640" fill="url(#glow)"/>
+  <rect width="1280" height="640" fill="url(#fade)"/>
+
+  <!-- compass mark -->
+  <g transform="translate(210 300)">
+    <circle r="104" fill="none" stroke="url(#accent)" stroke-width="3.5" stroke-opacity="0.85"/>
+    <circle r="104" fill="#141416" fill-opacity="0.5"/>
+    <path d="M0 -66 L22.5 18 L0 6 L-22.5 18 Z" fill="url(#accent)"/>
+    <path d="M0 66 L16.5 -12 L0 -3 L-16.5 -12 Z" fill="#ffffff" fill-opacity="0.28"/>
+    <circle r="7" fill="#ffffff"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="400" y="252" font-family="'Geist','Inter','Segoe UI',system-ui,sans-serif" font-size="132" font-weight="700" letter-spacing="-4" fill="url(#accent)">HiTo</text>
+
+  <!-- tagline -->
+  <text x="406" y="316" font-family="'Geist','Inter','Segoe UI',system-ui,sans-serif" font-size="33" font-weight="500" letter-spacing="0.3" fill="#ffffff" fill-opacity="0.68">Self-hosted navigation portal with a real edge WAF.</text>
+
+  <!-- feature chips -->
+  <g font-family="'Geist','Inter','Segoe UI',system-ui,sans-serif" font-size="19" font-weight="500" fill="#ffffff" fill-opacity="0.74">
+    <g transform="translate(406 364)">
+      <rect x="0" y="0" width="216" height="42" rx="21" fill="#141416" stroke="#ffffff" stroke-opacity="0.10"/>
+      <circle cx="26" cy="21" r="4.5" fill="#EF4444"/>
+      <text x="44" y="27.5">Kun 1.0 edge WAF</text>
+    </g>
+    <g transform="translate(640 364)">
+      <rect x="0" y="0" width="198" height="42" rx="21" fill="#141416" stroke="#ffffff" stroke-opacity="0.10"/>
+      <circle cx="26" cy="21" r="4.5" fill="#22D3EE"/>
+      <text x="44" y="27.5">Live attack map</text>
+    </g>
+    <g transform="translate(856 364)">
+      <rect x="0" y="0" width="238" height="42" rx="21" fill="#141416" stroke="#ffffff" stroke-opacity="0.10"/>
+      <circle cx="26" cy="21" r="4.5" fill="#34D399"/>
+      <text x="44" y="27.5">docker run one-liner</text>
+    </g>
+  </g>
+
+  <!-- stack line -->
+  <text x="406" y="472" font-family="'Geist','Inter','Segoe UI',system-ui,sans-serif" font-size="17" font-weight="400" letter-spacing="2" fill="#ffffff" fill-opacity="0.38">NEXT.JS 15  ·  SQLITE  ·  PRISMA  ·  TAILWIND  ·  LIQUID GLASS</text>
+
+  <!-- footer -->
+  <g font-family="'Geist','Inter','Segoe UI',system-ui,sans-serif" font-size="19" font-weight="500">
+    <text x="406" y="556" fill="#ffffff" fill-opacity="0.52">github.com/Vuln-SafeLab/HiTo</text>
+    <text x="1180" y="556" text-anchor="end" fill="#ffffff" fill-opacity="0.34">MIT</text>
+  </g>
+</svg>
