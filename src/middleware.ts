@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+﻿import { NextResponse, type NextRequest } from "next/server";
 import { ACCESS_COOKIE, REFRESH_COOKIE } from "@/lib/auth/constants";
 import { buildCsp, generateNonce } from "@/lib/security/headers";
 import { applyPassIssue, inspectRequest, kunResponse } from "@/lib/security/engine/engine";
@@ -40,7 +40,7 @@ function applySecurityHeaders(response: NextResponse, csp: string | null): NextR
 
 // Redirect base must survive reverse proxies: Next self-hosted builds request.url from
 // the Host header, and nginx defaults proxy_set_header Host to the upstream address
-// (127.0.0.1:3000) — absolute redirects would then send browsers to localhost. Prefer
+// (127.0.0.1:3000) 鈥?absolute redirects would then send browsers to localhost. Prefer
 // the forwarded headers, then the raw Host, then NEXT_PUBLIC_APP_URL, then request.url.
 function redirectBase(request: NextRequest): string {
   const fwdHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ?? "";
@@ -62,13 +62,11 @@ function redirectBase(request: NextRequest): string {
 }
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {
-  console.log("[mw] enter", request.nextUrl.pathname);
   const kunVerdict = await inspectRequest(request);
   if (kunVerdict.action === "block" || kunVerdict.action === "challenge") {
     return kunResponse(kunVerdict);
   }
 
-  console.log("[mw] verdict", kunVerdict.action, request.nextUrl.pathname);
   const { pathname } = request.nextUrl;
 
   const isProduction = process.env.NODE_ENV === "production";
@@ -76,8 +74,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const requestHeaders = new Headers(request.headers);
 
   // Proxy-header re-anchoring: nginx defaults `proxy_set_header Host` to the upstream
-  // address, so the raw Host says 127.0.0.1:3000 while Origin says https://apt.cab —
-  // Next.js Server Actions then reject EVERY admin write on an Origin/host mismatch
+  // address, so the raw Host says 127.0.0.1:3000 while Origin says https://apt.cab 鈥?  // Next.js Server Actions then reject EVERY admin write on an Origin/host mismatch
   // (pages still render, so the back-office "looks fine but nothing works"). Next's
   // action handler reads x-forwarded-host first, but a misconfigured proxy sends none.
   // When the operator pinned NEXT_PUBLIC_APP_URL and neither header matches it,
@@ -105,9 +102,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     requestHeaders.set("content-security-policy", csp);
   }
 
-  console.log("[mw] before checkInstalled", request.nextUrl.pathname);
   const installed = await checkInstalled();
-  console.log("[mw] after checkInstalled", installed, request.nextUrl.pathname);
   const isSetupPath = pathname === "/setup" || pathname.startsWith("/setup/");
 
   if (!installed && !isSetupPath) {
@@ -137,7 +132,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     // The login page itself (src/app/admin/login/page.tsx:19) validates the
     // session and only then redirects to /admin. Blindly redirecting on
     // cookie existence causes an infinite loop when the cookie is stale
-    // (e.g. after AUTH_SECRET rotation): /admin → /admin/login → /admin ...
+    // (e.g. after AUTH_SECRET rotation): /admin 鈫?/admin/login 鈫?/admin ...
   }
 
   const response = applySecurityHeaders(
