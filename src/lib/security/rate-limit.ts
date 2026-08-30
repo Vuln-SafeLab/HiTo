@@ -86,6 +86,17 @@ class DatabaseRateLimiter implements RateLimiter {
       }
       return { ok: true, remaining: Math.max(0, rule.limit - count), retryAfterSeconds: 0 };
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      // Pre-install bootstrap: the setup wizard rate-limits BEFORE migrations have
+      // created rate_limit_buckets. Fail open (memory fallback) for the missing-table
+      // case only — a genuinely unreachable/misconfigured DB in production must still
+      // fail closed. See the deploy-order caveat in README troubleshooting.
+      if (message.includes("does not exist in the current database") || message.includes("P2021")) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[rate-limit] pre-install: buckets table missing — memory fallback for this request");
+        }
+        return memoryFallback.limit(key, rule);
+      }
       // DB write/read failed: fail-closed in production so a multi-replica deployment
       // does not silently downgrade to per-instance memory (which would let attackers
       // bypass cross-replica rate limits by spreading requests).

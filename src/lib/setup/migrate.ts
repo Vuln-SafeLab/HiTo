@@ -12,6 +12,20 @@ function redactSecrets(text: string): string {
 
 // Invoke Prisma's JS entry directly instead of the .bin shim for cross-platform consistency (Windows .cmd requires shell, which introduces quote-escaping issues)
 export async function runMigrateDeploy(databaseUrl: string): Promise<MigrateResult> {
+  let last: MigrateResult = { ok: false, message: "migration did not run" };
+  // SQLite single-writer: the wizard's own requests (rate-limit writes, probes) hold
+  // the write lock while the migration child needs it exclusively. Retry transient
+  // "database is locked" instead of surfacing a scary 500 the user can only fix by retrying.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    last = await runMigrateDeployOnce(databaseUrl);
+    if (last.ok) return last;
+    if (!/database is locked|SQLITE_BUSY/i.test(last.message)) return last;
+    if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+  return last;
+}
+
+async function runMigrateDeployOnce(databaseUrl: string): Promise<MigrateResult> {
   const prismaEntry = path.join(process.cwd(), "node_modules", "prisma", "build", "index.js");
 
   return await new Promise<MigrateResult>((resolve) => {

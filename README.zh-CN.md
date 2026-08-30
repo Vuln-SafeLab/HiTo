@@ -308,6 +308,7 @@ location / {
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
     proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
     # 下面两行必须加：Kun 的 IP 打分、封禁、审计日志都依赖真实客户端 IP
     # （同时在 .env 里设置 TRUST_PROXY=true）
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -388,11 +389,12 @@ pnpm install
 </details>
 
 <details>
-<summary><b>4. 生产构建报：<code>[rate-limit] RATE_LIMIT_DRIVER=memory in production</code></b></summary>
+<summary><b>4. 生产报：<code>[rate-limit] RATE_LIMIT_DRIVER=memory in production</code></b></summary>
 
-**症状：** `pnpm build` 在收集页面数据阶段中止，报限流守卫错误。
-**原因：** 有意为之的守卫 —— 内存限流器无法跨副本协调，生产构建拒绝 `memory` 模式。
+**症状：** `pnpm build` 构建期中止；或运行时 `RATE_LIMIT_DRIVER=memory` 导致**模块加载即抛错、所有 API 500**（守卫在模块顶层执行，不只是构建期）。
+**原因：** 有意为之的守卫 —— 内存限流器无法跨副本协调，生产环境拒绝 `memory` 模式（构建期与运行期都会拦截）。
 **解决：** 保持 `RATE_LIMIT_DRIVER="db"`（`.env.example` 默认值；计数存在 SQLite 表里，单实例/多实例都安全）。
+**特例：** 全新库走「先启动应用、再跑向导」时，向导接口的限流写入发生在建表之前 —— 引擎已对该场景做降级（检测到 `rate_limit_buckets` 表不存在时自动回退内存限流），不会再 500。
 </details>
 
 <details>
@@ -448,6 +450,22 @@ pnpm exec prisma migrate resolve --applied 20260826070000_add_waf_events
 **症状：** 多管理员同时写入时偶发 `SQLITE_BUSY: database is locked`。
 **原因：** SQLite 是单写者数据库，并发写事务会排队。
 **解决：** 默认连接串自带 `connection_limit=1`，已将写入串行化避免此错。如果手改过 `DATABASE_URL`，改回去即可。重多管理员写入场景请等 Roadmap 的 Postgres 选项。
+**向导场景：** 「执行迁移」与向导页面的限流写入竞争写锁导致的 `database is locked` 已内置**自动重试**（最多 3 次、间隔 2s），无需手动重跑。
+</details>
+
+<details>
+<summary><b>11. Nginx 反代后，重定向变成 <code>localhost:3000</code> 或 <code>127.0.0.1:3000</code></b></summary>
+
+**症状：** 站点经 nginx 反代后访问，浏览器被跳到 `Location: http://127.0.0.1:3000/setup`。
+**原因：** 自托管模式下 Next.js 用请求的 `Host` 头构造 `request.url`，而 nginx 默认 `proxy_set_header Host $proxy_host`（即上游地址），不透传原始域名。
+**解决（两选一，推荐前者）：**
+```nginx
+# 让后端看到真实域名（宝塔等面板模板通常已含前两行，补上第三行即可）
+proxy_set_header Host $host;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Forwarded-Host $host;   # ← HiTo 的重定向已优先读取此头
+```
+或应急用 `proxy_redirect http://127.0.0.1:3000/ https://你的域名/;` 重写 Location（不改后端行为，不推荐长期使用）。
 </details>
 
 ---

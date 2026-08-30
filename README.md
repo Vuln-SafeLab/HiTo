@@ -308,6 +308,7 @@ location / {
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
     proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
     # the two lines below are required: Kun's IP scoring, bans and audit logs
     # rely on the real client IP (then set TRUST_PROXY=true in .env)
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -388,11 +389,12 @@ All variables live in `.env` at the project root. Copy `.env.example`; most are 
 </details>
 
 <details>
-<summary><b>4. Production build fails: <code>[rate-limit] RATE_LIMIT_DRIVER=memory in production</code></b></summary>
+<summary><b>4. Production fails: <code>[rate-limit] RATE_LIMIT_DRIVER=memory in production</code></b></summary>
 
-**Symptom:** `pnpm build` aborts during page-data collection with a rate-limit guard error.
-**Root cause:** an intentional guard — the in-memory limiter can't coordinate across replicas, so production builds refuse `memory` unless you acknowledge single-instance.
+**Symptom:** `pnpm build` aborts; or with `RATE_LIMIT_DRIVER=memory` at runtime the **module load itself throws and every API 500s** (the guard runs at module top level, not just at build time).
+**Root cause:** intentional guard — the in-memory limiter cannot coordinate across replicas, so production rejects `memory` (both at build and runtime).
 **Fix:** keep `RATE_LIMIT_DRIVER="db"` (the `.env.example` default; counters live in the SQLite table, safe for single and multi-instance alike).
+**Edge case:** on a fresh database following the "start the app first, migrate via wizard" order, wizard endpoints rate-limit before the tables exist — the limiter now detects the missing `rate_limit_buckets` table and falls back to memory for those requests instead of 500ing.
 </details>
 
 <details>
@@ -448,6 +450,22 @@ pnpm exec prisma migrate resolve --applied 20260826070000_add_waf_events
 **Symptom:** occasional `SQLITE_BUSY: database is locked` under heavy admin activity.
 **Root cause:** SQLite is a single-writer database; concurrent write transactions queue.
 **Fix:** the default connection string already carries `connection_limit=1`, which serializes writes and avoids the error. If you hand-edited `DATABASE_URL`, put it back. For heavy multi-admin write loads, the roadmap Postgres option removes the ceiling entirely.
+**Wizard:** `database is locked` caused by the migration child racing the wizard's own rate-limit writes is now **auto-retried** (up to 3 attempts, 2s apart) — no manual re-run needed.
+</details>
+
+<details>
+<summary><b>11. Behind nginx, redirects go to <code>localhost:3000</code> / <code>127.0.0.1:3000</code></b></summary>
+
+**Symptom:** with the site behind a reverse proxy, the browser is sent to `Location: http://127.0.0.1:3000/setup`.
+**Root cause:** self-hosted Next.js builds `request.url` from the request's `Host` header, and nginx defaults `proxy_set_header Host $proxy_host` (the upstream address) instead of forwarding the original domain.
+**Fix (either; first recommended):**
+```nginx
+# let the backend see the real domain (panel templates usually have the first two lines; add the third)
+proxy_set_header Host $host;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Forwarded-Host $host;   # ← HiTo redirects prefer this header
+```
+or, as a stopgap, rewrite the Location header with `proxy_redirect http://127.0.0.1:3000/ https://your-domain/;` (works but hides the real behavior — not recommended long-term).
 </details>
 
 ---

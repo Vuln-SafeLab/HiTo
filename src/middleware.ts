@@ -38,6 +38,29 @@ function applySecurityHeaders(response: NextResponse, csp: string | null): NextR
   return response;
 }
 
+// Redirect base must survive reverse proxies: Next self-hosted builds request.url from
+// the Host header, and nginx defaults proxy_set_header Host to the upstream address
+// (127.0.0.1:3000) — absolute redirects would then send browsers to localhost. Prefer
+// the forwarded headers, then the raw Host, then NEXT_PUBLIC_APP_URL, then request.url.
+function redirectBase(request: NextRequest): string {
+  const fwdHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ?? "";
+  const host = fwdHost !== "" ? fwdHost : (request.headers.get("host")?.trim() ?? "");
+  if (host !== "") {
+    const fwdProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? "";
+    const proto = fwdProto !== "" ? fwdProto : new URL(request.url).protocol.replace(":", "");
+    return `${proto}://${host}`;
+  }
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (appUrl !== undefined && appUrl.trim() !== "") {
+    try {
+      return new URL(appUrl).origin;
+    } catch {
+      // malformed value: fall through to request.url
+    }
+  }
+  return request.url;
+}
+
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   console.log("[mw] enter", request.nextUrl.pathname);
   const kunVerdict = await inspectRequest(request);
@@ -65,12 +88,15 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
   if (!installed && !isSetupPath) {
     return applySecurityHeaders(
-      NextResponse.redirect(new URL("/setup", request.url), 302),
+      NextResponse.redirect(new URL("/setup", redirectBase(request)), 302),
       csp
     );
   }
   if (installed && isSetupPath) {
-    return applySecurityHeaders(NextResponse.redirect(new URL("/", request.url), 302), csp);
+    return applySecurityHeaders(
+      NextResponse.redirect(new URL("/", redirectBase(request)), 302),
+      csp
+    );
   }
 
   if (pathname.startsWith("/admin")) {
@@ -79,7 +105,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     const isLoginPage = pathname === "/admin/login";
     if (!hasAuthCookie && !isLoginPage) {
       return applySecurityHeaders(
-        NextResponse.redirect(new URL("/admin/login", request.url), 302),
+        NextResponse.redirect(new URL("/admin/login", redirectBase(request)), 302),
         csp
       );
     }
