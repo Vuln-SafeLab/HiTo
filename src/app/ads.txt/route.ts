@@ -20,7 +20,13 @@ export async function GET(): Promise<Response> {
           ? row.value
           : row.value + "\n"
         : DEFAULT_BODY;
-  } catch {
+  } catch (error) {
+    // Never swallow silently: a DB outage here used to be indistinguishable from
+    // "not configured" and sent debugging down the wrong path (nginx cache, etc.).
+    console.error(
+      "[ads.txt] lookup failed, serving default body:",
+      error instanceof Error ? error.message.slice(0, 200) : error
+    );
     body = DEFAULT_BODY;
   }
   return new Response(body, {

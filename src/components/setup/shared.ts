@@ -17,6 +17,15 @@ export interface ApiError {
   ok: false;
   code: string;
   detail?: string;
+  /** test-connection returns human-readable probe errors as `message` */
+  message?: string;
+}
+
+/** Prefer detail, fall back to message — surfacing the real cause (e.g. "database is locked") beats a generic retry hint. */
+export function apiErrorText(error: ApiError): string | null {
+  if (typeof error.detail === "string" && error.detail.trim() !== "") return error.detail;
+  if (typeof error.message === "string" && error.message.trim() !== "") return error.message;
+  return null;
 }
 
 export async function postJson<TSuccess extends { ok: true }>(

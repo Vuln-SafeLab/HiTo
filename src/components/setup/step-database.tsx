@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { dbConfigFormSchema, type DbConfigFormInput } from "@/lib/validators/setup";
 import { FieldError } from "./field-error";
-import { errorMessageKey, postJson, type SetupStatus } from "./shared";
+import { apiErrorText, errorMessageKey, postJson, type ApiError, type SetupStatus } from "./shared";
 
 interface TestSuccess {
   ok: true;
@@ -56,6 +56,7 @@ export function StepDatabase({ status, onDone }: StepDatabaseProps) {
       setTestResult(result);
     } else {
       setErrorKey(errorMessageKey(result.code));
+      setErrorDetail(apiErrorText(result as ApiError));
     }
     setTesting(false);
   }, [buildBody, form, useExisting]);
@@ -78,9 +79,7 @@ export function StepDatabase({ status, onDone }: StepDatabaseProps) {
       return;
     }
     setErrorKey(errorMessageKey(result.code));
-    if (typeof result.detail === "string" && result.detail !== "") {
-      setErrorDetail(result.detail);
-    }
+    setErrorDetail(apiErrorText(result as ApiError));
     setApplying(false);
   }, [buildBody, form, onDone, useExisting]);
 
