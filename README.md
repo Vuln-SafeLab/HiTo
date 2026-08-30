@@ -265,7 +265,21 @@ It starts the app container (standalone Next.js output, auto-runs `prisma migrat
 
 > ✅ **Verify:** `docker compose -f docker-compose.prod.yml ps` shows the app **healthy**; `curl -I http://your-server-ip` returns **200** (or **302 → /setup** on first run).
 
-**Option B — bare Node + pm2 + your own nginx:**
+**Option B — prebuilt image from Docker Hub (no repo clone / local build needed):**
+
+```bash
+docker pull vulnlab0/hito:latest
+docker run -d --name hito -p 3000:3000 \
+  -v hito-data:/app/data -v hito-uploads:/app/public/uploads \
+  vulnlab0/hito:latest
+# open http://your-server-ip:3000/setup and walk the install wizard
+```
+
+The image contains only build artifacts (standalone output + Prisma CLI) — **no secrets, database, or uploaded files are baked in**. On first boot the install wizard generates `AUTH_SECRET` and initializes SQLite automatically. All state lives in the `hito-data` / `hito-uploads` volumes — backing up those two volumes backs up everything. To upgrade: `docker pull` and recreate the container.
+
+> ✅ **Verify:** `curl -I http://your-server-ip:3000` returns **302 → /setup** (and **200** once installed).
+
+**Option C — bare Node + pm2 + your own nginx:**
 
 ```bash
 pnpm install && pnpm build

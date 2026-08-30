@@ -265,7 +265,21 @@ docker compose -f docker-compose.prod.yml up -d
 
 > ✅ **验证：** `docker compose -f docker-compose.prod.yml ps` 显示 app **healthy**；`curl -I http://服务器IP` 返回 **200**（首跑为 **302 → /setup**）。
 
-**方式 B —— 裸 Node + pm2 + 自备 nginx：**
+**方式 B —— 拉取预构建镜像（Docker Hub，无需克隆仓库/本地构建）：**
+
+```bash
+docker pull vulnlab0/hito:latest
+docker run -d --name hito -p 3000:3000 \
+  -v hito-data:/app/data -v hito-uploads:/app/public/uploads \
+  vulnlab0/hito:latest
+# 浏览器打开 http://服务器IP:3000/setup 完成安装向导
+```
+
+镜像内只含源码构建产物（standalone + Prisma CLI），**不内置任何密钥、数据库或上传文件**——首次启动由安装向导自动生成 `AUTH_SECRET` 并初始化 SQLite。数据全部落在 `hito-data` / `hito-uploads` 两个卷里，备份这两个卷即备份全部。升级直接 `docker pull` 后重建容器。
+
+> ✅ **验证：** `curl -I http://服务器IP:3000` 返回 **302 → /setup**（安装完成后为 **200**）。
+
+**方式 C —— 裸 Node + pm2 + 自备 nginx：**
 
 ```bash
 pnpm install && pnpm build
