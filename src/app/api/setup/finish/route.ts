@@ -45,7 +45,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const db = getDb();
   if (parsed.data.seed) {
-    await runSeed(db);
+    try {
+      await runSeed(db);
+    } catch (error) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "generic",
+          detail: `seed failed: ${error instanceof Error ? error.message.slice(0, 300) : "unknown"}`,
+        },
+        { status: 500 }
+      );
+    }
   }
   await markInstalled();
 

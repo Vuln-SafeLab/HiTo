@@ -41,11 +41,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (existing === undefined || !existing.startsWith("file:")) {
       return NextResponse.json({ ok: false, code: "generic" }, { status: 400 });
     }
+    // No pre-migrate write probe here: on a fresh DB the tables don't exist yet and
+    // probeSqliteWrite would fail with "does not exist" — the migrate below runs first,
+    // and the post-migrate probe at the end of this route validates the same thing.
     await resetDb();
-    const probe = await probeSqliteWrite();
-    if (!probe.ok) {
-      return NextResponse.json(probe, { status: 400 });
-    }
     databaseUrl = existing;
   } else {
     const parsed = dbConfigSchema.safeParse(body);

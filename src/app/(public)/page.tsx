@@ -86,6 +86,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         headerAd={<AdSlot position="HEADER" className="mx-auto w-full max-w-7xl px-4 pt-3 sm:px-6" />}
         inlineAd={<AdSlot position="INLINE" className="my-2" />}
         footerAd={<AdSlot position="FOOTER" className="mb-6 flex justify-center" />}
+        articleTopAd={<AdSlot position="ARTICLE_TOP" className="my-2" />}
+        articleBottomAd={<AdSlot position="ARTICLE_BOTTOM" className="my-2" />}
+        sidebarAd={<AdSlot position="SIDEBAR" className="w-full" />}
       />
       <PopupAdSlot />
     </>

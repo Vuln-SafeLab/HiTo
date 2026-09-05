@@ -90,8 +90,14 @@ class DatabaseRateLimiter implements RateLimiter {
       // Pre-install bootstrap: the setup wizard rate-limits BEFORE migrations have
       // created rate_limit_buckets. Fail open (memory fallback) for the missing-table
       // case only — a genuinely unreachable/misconfigured DB in production must still
-      // fail closed. See the deploy-order caveat in README troubleshooting.
-      if (message.includes("does not exist in the current database") || message.includes("P2021")) {
+      // fail closed. Prisma reports a missing table differently for model queries
+      // (P2021 / "does not exist in the current database") than for $executeRaw on
+      // SQLite ("no such table"), so match both — verified against a real fresh DB.
+      if (
+        message.includes("does not exist in the current database") ||
+        message.includes("P2021") ||
+        message.includes("no such table:")
+      ) {
         if (process.env.NODE_ENV !== "production") {
           console.warn("[rate-limit] pre-install: buckets table missing — memory fallback for this request");
         }

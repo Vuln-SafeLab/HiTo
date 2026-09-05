@@ -50,14 +50,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const passwordHash = await hashPassword(parsed.data.password);
-  const user = await db.user.create({
-    data: {
-      username: parsed.data.username,
-      email: parsed.data.email,
-      passwordHash,
-      role: "ADMIN",
-    },
-  });
+  let user;
+  try {
+    user = await db.user.create({
+      data: {
+        username: parsed.data.username,
+        email: parsed.data.email,
+        passwordHash,
+        role: "ADMIN",
+      },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "generic",
+        detail: `admin create failed: ${error instanceof Error ? error.message.slice(0, 300) : "unknown"}`,
+      },
+      { status: 500 }
+    );
+  }
 
   await writeAudit({
     userId: user.id,

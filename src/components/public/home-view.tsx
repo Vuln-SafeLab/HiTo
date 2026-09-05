@@ -39,6 +39,10 @@ interface HomeViewProps {
   headerAd?: React.ReactNode;
   inlineAd?: React.ReactNode;
   footerAd?: React.ReactNode;
+  /** Content-area top/bottom slots and the right-hand sidebar (xl screens only) */
+  articleTopAd?: React.ReactNode;
+  articleBottomAd?: React.ReactNode;
+  sidebarAd?: React.ReactNode;
 }
 
 export function HomeView({
@@ -53,6 +57,9 @@ export function HomeView({
   headerAd = null,
   inlineAd = null,
   footerAd = null,
+  articleTopAd = null,
+  articleBottomAd = null,
+  sidebarAd = null,
 }: HomeViewProps) {
   const t = useTranslations();
   const locale = useLocale();
@@ -251,7 +258,10 @@ export function HomeView({
           {inlineAd}
         </div>
 
-        <section className="pb-20" aria-live="polite">
+        {articleTopAd}
+
+        <div className="flex flex-col gap-6 xl:flex-row">
+          <section className="min-w-0 flex-1 pb-20" aria-live="polite">
           {cards.length === 0 ? (
             <EmptyState icon={Inbox} title={t("home.emptyTitle")} body={t("home.emptyBody")} />
           ) : sorted.length === 0 ? (
@@ -290,7 +300,13 @@ export function HomeView({
               </motion.div>
             </AnimatePresence>
           )}
-        </section>
+          </section>
+          {sidebarAd != null && (
+            <aside className="w-full shrink-0 xl:w-64">{sidebarAd}</aside>
+          )}
+        </div>
+
+        {articleBottomAd}
       </main>
 
       <footer className="mt-auto">
